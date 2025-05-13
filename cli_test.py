@@ -7,3 +7,4 @@ if __name__ == "__main__":
     to_discovery = Queue()
 
     cli_loop(to_network, from_network, to_discovery)
+ 
