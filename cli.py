@@ -21,7 +21,7 @@ Verfügbare Befehle:
 def lade_konfiguration(pfad="config.toml"):
     try:
         config = toml.load(pfad)
-
+   
         # Prüfen, ob Bildordner existiert – wenn nicht: erstellen
         image_dir = config.get("imagepath", "./bilder")
         if not os.path.exists(image_dir):
