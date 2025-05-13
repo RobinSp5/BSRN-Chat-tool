@@ -3,7 +3,7 @@ import threading
 import queue
 import toml
 import os
-
+  
 # === Funktion: Hilfetext anzeigen ===
 def print_help():
     print("""
