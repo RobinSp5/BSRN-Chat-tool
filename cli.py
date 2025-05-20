@@ -4,18 +4,17 @@ import queue
 import toml
 import os
   
-# === Funktion: Hilfetext anzeigen ===
+# === Zeigt alle verfügbaren Befehle an ===
 def print_help():
-    print("""
-Verfügbare Befehle:
-  /join                - Dem Chat beitreten
-  /leave               - Chat verlassen
-  /who                 - Teilnehmer im Netzwerk suchen
-  /msg <User> <Text>   - Nachricht an Nutzer senden
-  /img <User> <Pfad>   - Bild an Nutzer senden
-  /exit                - Programm beenden
-  /help                - Hilfe anzeigen
-""")
+    print("Verfügbare Befehle:")
+    print("  /join                - Dem Chat beitreten")
+    print("  /leave               - Chat verlassen")
+    print("  /who                 - Teilnehmer im Netzwerk suchen")
+    print("  /msg <User> <Text>   - Nachricht an Nutzer senden")
+    print("  /img <User> <Pfad>   - Bild an Nutzer senden")
+    print("  /set <Schlüssel> <Wert> - Konfiguration ändern und speichern")
+    print("  /exit                - Programm beenden")
+    print("  /help                - Hilfe anzeigen")
 
 # === Lädt die Konfiguration aus der config.toml Datei ===
 def lade_konfiguration(pfad="config.toml"):
