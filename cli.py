@@ -17,7 +17,7 @@ Verfügbare Befehle:
   /help                - Hilfe anzeigen
 """)
 
-# === Funktion: Konfiguration aus config.toml laden ===
+# === Lädt die Konfiguration aus der config.toml Datei ===
 def lade_konfiguration(pfad="config.toml"):
     try:
         config = toml.load(pfad)
