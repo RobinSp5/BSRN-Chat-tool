@@ -1,17 +1,38 @@
-Ein leichtgewichtiges, dezentral organisiertes Chatprogramm, das Text- und Bildnachrichten über ein lokales Netzwerk (LAN) verschicken und empfangen kann. 
-Die Anwendung basiert auf dem Simple Local Chat Protocol (SLCP) und wurde im Rahmen eines Hochschulprojekts an der Frankfurt UAS entwickelt.
+# Simple LAN Chat (SLCP)
+
+Ein leichtgewichtiges, dezentral organisiertes Chatprogramm für Text- und Bildnachrichten im lokalen Netzwerk (LAN). Entwickelt im Rahmen eines Hochschulprojekts an der Frankfurt UAS auf Basis des Simple Local Chat Protocol (SLCP).
+
+---
 
 ## 🔧 Features
 
-- Kommunikation über UDP und TCP gemäß SLCP
-- Text- und Bildnachrichtenversand im LAN
-- Interprozesskommunikation (IPC) zwischen Modulen
-- Kommandozeileninterface (CLI) zur Bedienung und Konfiguration
-- Discovery-Service zur Erkennung aktiver Nutzer im Netzwerk
-- Konfiguration über zentrale TOML-Datei
+- **SLCP-Kommunikation**  
+  - UDP-Broadcast: JOIN, LEAVE, WHO  
+  - TCP-Verbindungen: zuverlässige Bildübertragung (IMG)  
+- **Text- & Bildnachrichten**  
+- **Interprozesskommunikation (IPC)**  
+  - Prozesse für UI, Netzwerk & Discovery  
+  - Thread-safe Queues für Datenaustausch  
+- **Kommandozeilen-Interface (CLI)**  
+  - Nachrichten senden/empfangen  
+  - Konfigurationswerte bearbeiten  
+- **Discovery-Service**  
+  - Erkennung und Pflege aktiver Peers  
+- **Zentrale Konfiguration**  
+  - `config.toml` mit Netzwerk-, UI- und Nutzer-Einstellungen  
+  - Bei Programmstart: interaktive CLI-Eingabe oder GUI-Eingabe (z. B. Benutzername)  
 
-- ## 🛠️ Technologien
+---
 
-- Programmiersprache: Python 3
-- Entwicklungsumgebung: Visual Studio Code
-- Bibliotheken: `socket`, `threading`, `toml`, `tkinter`, `os`, `sys`, u.a.
+## 🛠️ Technologien & Abhängigkeiten
+
+- **Sprache:** Python 3.8+  
+- **Entwicklungsumgebung:** Visual Studio Code  
+- **Bibliotheken:**  
+  - `socket` (UDP/TCP)  
+  - `threading` / `queue` (Nebenläufigkeit & IPC)  
+  - `toml` (Laden/Speichern der Konfiguration)  
+  - `tkinter` (optionales GUI)  
+  - `os`, `sys`, `time` (System- und Timing-Utilities)  
+
+---
