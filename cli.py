@@ -131,7 +131,7 @@ def cli_loop(to_network, from_network, to_discovery):
                         # Änderungen in config.toml speichern
                         with open("config.toml", "w") as f:
                             toml.dump(config, f)
-                        print(f"Konfig geändert: {schluessel} = {wert}")
+                        print(f"Konfig geändert: {schluessel} = {wert}") 
                     except Exception as e:
                         print("Fehler beim Schreiben der Konfig:", e)
 # === Hilfe anzeigen ===
