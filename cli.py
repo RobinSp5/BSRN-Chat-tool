@@ -27,86 +27,119 @@ def lade_konfiguration(pfad="config.toml"):
             os.makedirs(image_dir)
 
         return config
+    except FileNotFoundError:
+        print("Die Datei config.toml wurde nicht gefunden. Bitte anlegen oder Pfad prüfen.")
+        sys.exit(1)
     except Exception as e:
         print(f"Fehler beim Laden der Konfiguration: {e}")
         sys.exit(1)
 
-# === Hauptfunktion für das CLI ===
+# === Startet das CLI (Command Line Interface) ===
 def cli_loop(to_network, from_network, to_discovery):
     # Konfiguration laden
     config = lade_konfiguration()
 
     print("Willkommen im SLCP-Chat (CLI-Version)")
-    print(f"Angemeldet als: {config['handle']}")
+    print("Angemeldet als:", config.get("handle", "Unbekannt"))
     print_help()
 
     # === Thread: empfängt Nachrichten aus dem Netzwerk und zeigt sie an ===
-    def incoming_messages_listener():
+    def nachrichten_empfangen():
         while True:
             try:
+                 # Neue Nachricht aus der Empfangs-Queue holen
                 msg = from_network.get(timeout=1)
                 print(f"\n[Empfangen] {msg}")
             except queue.Empty:
+                  # Keine Nachricht vorhanden → erneut warten
                 continue
 
-    threading.Thread(target=incoming_messages_listener, daemon=True).start()
+   # Startet den Empfangs-Thread im Hintergrund
+    threading.Thread(target=nachrichten_empfangen, daemon=True).start()
+
 
     # === Haupt-CLI-Eingabeschleife ===
     while True:
         try:
-            user_input = input(">>> ").strip()
+            eingabe = input(">>> ").strip()
 
-            if not user_input:
-                continue
+            if not eingabe:
+                continue # Leere Eingabe ignorieren
 
-            parts = user_input.split(" ", 2)
+            teile = eingabe.split(" ", 2) # Befehl aufteilen (max. 3 Teile)
+            befehl = teile[0]
 
-            # === Chat verlassen ===
-            if parts[0] == "/exit":
+            # === Programm beenden bzw. Chat verlassen  ===
+            if befehl == "/exit":
                 print("Programm wird beendet...")
                 break
 
-            # === JOIN senden ===
-            elif parts[0] == "/join":
+             # === Dem Chat beitreten (JOIN) ===
+            elif befehl == "/join":
                 to_discovery.put(f"JOIN {config['handle']} {config['port']}")
-                print(f"Beitritt gesendet: {config['handle']}")
-
-            # === LEAVE senden ===
-            elif parts[0] == "/leave":
+                print("JOIN gesendet")
+                
+            # === Chat verlassen (LEAVE) ===
+            elif befehl == "/leave":
                 to_discovery.put(f"LEAVE {config['handle']}")
-                print("Verlasse den Chat...")
-
-            # === WHO senden ===
-            elif parts[0] == "/who":
+                print("LEAVE gesendet")
+                
+            # === Teilnehmer im Netzwerk erfragen (WHO) ===
+            elif befehl == "/who":
                 to_discovery.put("WHO")
-                print("Frage nach aktiven Nutzern gesendet...")
+                print("WHO gesendet")
 
-            # === MSG senden ===
-            elif parts[0] == "/msg" and len(parts) >= 3:
-                handle, text = parts[1], parts[2]
-                if config.get("away", False):
-                    to_network.put(f"MSG {handle} {config.get('autoreply', 'Ich bin nicht verfügbar.')}")
-                    print(f"[Abwesenheitsantwort an {handle}]")
+            # === Nachricht an anderen Nutzer senden (MSG) ===
+            elif befehl == "/msg":
+                if len(teile) < 3:
+                    print("Fehlendes Argument: /msg <User> <Text>")
                 else:
-                    to_network.put(f"MSG {handle} {text}")
-                    print(f"[Gesendet an {handle}]: {text}")
-
-            # === IMG senden ===
-            elif parts[0] == "/img" and len(parts) >= 3:
-                handle, path = parts[1], parts[2]
-                try:
-                    with open(path, "rb") as f:
-                        image_data = f.read()
-                    to_network.put((f"IMG {handle} {len(image_data)}", image_data))
-                    print(f"[Bild gesendet an {handle}] Größe: {len(image_data)} Bytes")
-                except FileNotFoundError:
-                    print(f"Datei nicht gefunden: {path}")
-
-            # === Hilfe anzeigen ===
-            elif parts[0] == "/help":
+                    empfaenger, text = teile[1], teile[2]
+                     # Prüfen, ob Abwesenheitsmodus aktiv ist
+                    if config.get("away", False):
+                        antwort = config.get("autoreply", "Ich bin gerade nicht da.")
+                        to_network.put(f"MSG {empfaenger} {antwort}")
+                        print(f"[Abwesenheitsantwort an {empfaenger}]")
+                    else:
+                        to_network.put(f"MSG {empfaenger} {text}")
+                        print(f"[Gesendet an {empfaenger}]: {text}")
+                        
+            
+            # === Bild an anderen Nutzer senden (IMG) ===
+            elif befehl == "/img":
+                if len(teile) < 3: # === LEN gibt dir die Länge eines Objekts zurück, also es zählt die WÖRTEr nicht BUCHSTABEN ===
+                    print("Fehlendes Argument: /img <User> <Pfad>")
+                else:
+                    empfaenger, pfad = teile[1], teile[2]
+                    try:
+                        # Bild öffnen und als Bytes lesen
+                        with open(pfad, "rb") as f:
+                            bilddaten = f.read()
+                             # Bild inklusive Header in Netzwerk-Queue senden
+                        to_network.put((f"IMG {empfaenger} {len(bilddaten)}", bilddaten))
+                        print("Bild an", empfaenger, "gesendet – Größe:", len(bilddaten), "Bytes")
+                    except FileNotFoundError:
+                        print("Bilddatei nicht gefunden:", pfad)
+  # === Konfiguration ändern und speichern (/set) ===
+            elif befehl == "/set":
+                if len(teile) < 3:
+                    print("Syntax: /set <Schlüssel> <Wert>")
+                else:
+                    schluessel, wert = teile[1], teile[2]
+                    config[schluessel] = wert
+                    try:
+                        # Änderungen in config.toml speichern
+                        with open("config.toml", "w") as f:
+                            toml.dump(config, f)
+                        print(f"Konfig geändert: {schluessel} = {wert}")
+                    except Exception as e:
+                        print("Fehler beim Schreiben der Konfig:", e)
+# === Hilfe anzeigen ===
+            elif befehl == "/help":
                 print_help()
+# === Ungültiger Befehl eingegeben ===
             else:
-                print("Unbekannter Befehl. /help zeigt alle Optionen.")
+                print("Unbekannter Befehl. Mit /help bekommst du eine Übersicht.")
 
         except (KeyboardInterrupt, EOFError):
             print("\nBeende CLI...")
