@@ -1,8 +1,8 @@
-import sys
-import threading
-import queue
-import toml
-import os
+import sys  # Für Dinge wie das Programm beenden oder Fehler ausgeben
+import threading  # Damit das Programm mehrere Dinge gleichzeitig machen kann (z. B. Nachrichten empfangen)
+import queue # Eine Art „Postkorb“ für Nachrichten zwischen den Programm-Teilen
+import toml # Damit wir die Einstellungen aus der Datei config.toml laden und speichern können
+import os  # Damit wir z. B. Ordner überprüfen oder erstellen können
   
 # === Zeigt alle verfügbaren Befehle an ===
 def print_help():
