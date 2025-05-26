@@ -7,9 +7,9 @@ import os
 import sys
 from datetime import datetime
 
-# === Konfiguration ===
+# === Konfiguration laden und speichern ===
 def lade_konfiguration(pfad="config.toml"):
-    """Lädt die Konfigurationsdatei"""
+    """Lädt die Konfigurationsdatei (TOML) und legt ggf. das Bildverzeichnis an."""
     try:
         config = toml.load(pfad)
         if not os.path.exists(config.get("imagepath", "./bilder")):
@@ -20,7 +20,7 @@ def lade_konfiguration(pfad="config.toml"):
         sys.exit(1)
 
 def speichere_konfiguration(config, pfad="config.toml"):
-    """Speichert die Konfiguration"""
+    """Speichert die Konfiguration als TOML-Datei."""
     try:
         with open(pfad, 'w') as f:
             toml.dump(config, f)
@@ -29,7 +29,7 @@ def speichere_konfiguration(config, pfad="config.toml"):
         return False
 
 def benutzername_abfragen(config):
-    """Fragt den Benutzernamen ab und speichert ihn in der Konfiguration"""
+    """Fragt den Benutzernamen ab und speichert ihn in der Konfiguration."""
     root = tk.Tk()
     root.withdraw()
     name = simpledialog.askstring("Name wählen", "Bitte gib deinen Chat-Namen ein:", initialvalue=config.get("handle", ""))
@@ -41,30 +41,33 @@ def benutzername_abfragen(config):
         sys.exit(1)
     root.destroy()
 
-# === Chat-Anwendung ===
+# === Hauptklasse für die Chat-GUI ===
 class ChatApp:
     def __init__(self, master, to_network=None, from_network=None, to_discovery=None):
-        """Initialisiert die Chat-GUI"""
+        """Initialisiert die Chat-GUI und startet den Empfangs-Thread."""
         self.master = master
+        # Queues für die Kommunikation mit dem Netzwerk-Backend
         self.to_network = to_network or queue.Queue()
         self.from_network = from_network or queue.Queue()
         self.to_discovery = to_discovery or queue.Queue()
+        # Konfiguration laden und Benutzername abfragen
         self.config = lade_konfiguration()
-        benutzername_abfragen(self.config)  # Name abfragen und speichern
-        self.is_joined = False
+        benutzername_abfragen(self.config)
+        self.is_joined = False  # Status: im Chat oder nicht
         self.participants = set()
         
         self.setup_gui()
+        # Thread für eingehende Nachrichten starten
         threading.Thread(target=self.empfange_nachrichten, daemon=True).start()
 
     def setup_gui(self):
-        """Erstellt die Benutzeroberfläche"""
+        """Erstellt die grafische Oberfläche (Fenster, Header, Chatbereich, Eingabe, Buttons)."""
         # Hauptfenster
         self.master.title("SLCP Chat - Gruppe A9")
         self.master.geometry("700x500")
         self.master.configure(bg='#e0e0e0')  # Heller grauer Hintergrund
 
-        # Header
+        # Header mit Status und Benutzername
         header = Frame(self.master, bg='#cccccc', height=40)
         header.pack(fill=tk.X, padx=10, pady=(10,5))
         header.pack_propagate(False)
@@ -76,7 +79,7 @@ class ChatApp:
         tk.Label(header, text=f"Benutzer: {self.config.get('handle', 'Unbekannt')}", 
                 bg='#cccccc', fg='gray', font=('Arial', 9)).pack(side=tk.RIGHT, pady=10)
 
-        # Chat-Bereich
+        # Chat-Bereich mit Verlauf
         chat_frame = Frame(self.master, bg='#e0e0e0')
         chat_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
@@ -85,7 +88,7 @@ class ChatApp:
         )
         self.chat_history.pack(fill=tk.BOTH, expand=True)
 
-        # Eingabebereich
+        # Eingabebereich für Nachrichten und Buttons
         input_frame = Frame(self.master, bg='#e0e0e0')
         input_frame.pack(fill=tk.X, padx=10, pady=(5,10))
 
@@ -93,21 +96,23 @@ class ChatApp:
         self.message_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0,5))
         self.message_entry.bind('<Return>', lambda e: self.send_message())
 
-        # Buttons mit sichtbarem Text und Kontrast
+        # Senden-Button
         send_btn = Button(input_frame, text="Senden", command=self.send_message, 
                bg='#bdbdbd', fg='black', padx=15)
         send_btn.pack(side=tk.RIGHT, padx=(0,5))
 
+        # Bild senden Button
         img_btn = Button(input_frame, text="Bild", command=self.send_image, 
                bg='#bdbdbd', fg='black', padx=10)
         img_btn.pack(side=tk.RIGHT, padx=(0,5))
 
+        # Menü-Button
         menu_btn = Button(input_frame, text="Menü", command=self.show_menu, 
                bg='#bdbdbd', fg='black', padx=10)
         menu_btn.pack(side=tk.RIGHT)
 
     def send_message(self):
-        """Sendet eine Nachricht oder führt einen Befehl aus"""
+        """Sendet eine Nachricht oder führt einen Befehl aus (wenn mit / beginnt)."""
         text = self.message_entry.get().strip()
         if not text:
             return
@@ -121,7 +126,7 @@ class ChatApp:
             if not self.is_joined:
                 self.zeige_nachricht("❌ Erst mit /join beitreten!")
                 return
-            # Simuliere Netzwerk-Nachricht für Testing
+            # Nachricht an das Netzwerk weitergeben
             try:
                 self.to_network.put(f"MSG Broadcast {text}")
                 self.zeige_nachricht(f"Du: {text}")
@@ -132,7 +137,7 @@ class ChatApp:
         self.message_entry.delete(0, tk.END)
 
     def handle_command(self, command):
-        """Verarbeitet Chat-Befehle"""
+        """Verarbeitet Chat-Befehle wie /join, /leave, /who, /msg, /help, /exit."""
         parts = command.split(' ', 2)
         cmd = parts[0].lower()
 
@@ -156,7 +161,7 @@ class ChatApp:
             self.zeige_nachricht("❌ Unbekannter Befehl. /help für Hilfe")
 
     def suche_teilnehmer(self):
-        """Sendet WHO und zeigt Teilnehmer an oder Feedback wenn alleine"""
+        """Sendet WHO und zeigt Teilnehmer an oder Feedback wenn alleine."""
         try:
             self.to_discovery.put("WHO")
             self.zeige_nachricht("🔍 Suche Teilnehmer...")
@@ -181,7 +186,7 @@ class ChatApp:
             self.zeige_nachricht("Fehler bei /who.")
 
     def join_chat(self):
-        """Tritt dem Chat bei"""
+        """Tritt dem Chat bei (setzt Status, sendet JOIN an Discovery)."""
         if self.is_joined:
             self.zeige_nachricht("⚠️ Bereits beigetreten!")
             return
@@ -194,7 +199,7 @@ class ChatApp:
         self.zeige_nachricht(f"✅ Chat beigetreten als '{self.config['handle']}'")
 
     def leave_chat(self):
-        """Verlässt den Chat"""
+        """Verlässt den Chat (setzt Status, sendet LEAVE an Discovery)."""
         if not self.is_joined:
             self.zeige_nachricht("⚠️ Nicht im Chat!")
             return
@@ -207,7 +212,7 @@ class ChatApp:
         self.zeige_nachricht("👋 Chat verlassen")
 
     def send_image(self):
-        """Sendet ein Bild"""
+        """Öffnet Dateidialog und sendet ein Bild an alle (nur wenn beigetreten)."""
         if not self.is_joined:
             self.zeige_nachricht("❌ Erst dem Chat beitreten!")
             return
@@ -224,7 +229,7 @@ class ChatApp:
                 self.zeige_nachricht(f"🖼️ Bild ausgewählt: {os.path.basename(file_path)}")
 
     def show_menu(self):
-        """Zeigt das Hauptmenü"""
+        """Zeigt das Kontextmenü mit allen wichtigen Chat-Befehlen."""
         print("Debug: Zeige Menü")
         menu = tk.Menu(self.master, tearoff=0)
         menu.add_command(label="📥 Beitreten", command=self.join_chat)
@@ -239,7 +244,7 @@ class ChatApp:
             menu.grab_release()
 
     def show_help(self):
-        """Zeigt die Hilfe"""
+        """Zeigt die Hilfe mit allen verfügbaren Chat-Befehlen."""
         help_text = """
 SLCP Chat - Befehle:
 /join - Chat beitreten
@@ -252,7 +257,7 @@ SLCP Chat - Befehle:
         self.zeige_nachricht(help_text)
 
     def empfange_nachrichten(self):
-        """Thread für eingehende Nachrichten"""
+        """Thread für eingehende Nachrichten aus dem Netzwerk."""
         while True:
             try:
                 msg = self.from_network.get(timeout=1)
@@ -264,7 +269,7 @@ SLCP Chat - Befehle:
                 continue
 
     def zeige_nachricht(self, text):
-        """Zeigt eine Nachricht im Chat an"""
+        """Zeigt eine Nachricht im Chatfenster mit Zeitstempel an."""
         timestamp = datetime.now().strftime("%H:%M")
         try:
             self.chat_history.insert(tk.END, f"[{timestamp}] {text}\n")
@@ -273,7 +278,7 @@ SLCP Chat - Befehle:
             print(f"Debug: Fehler beim Anzeigen der Nachricht: {e}")
 
 def main():
-    """Startet die Anwendung"""
+    """Startet die Anwendung und initialisiert die Queues und das Hauptfenster."""
     to_network = queue.Queue()
     from_network = queue.Queue()
     to_discovery = queue.Queue()
