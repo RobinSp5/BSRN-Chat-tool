@@ -60,11 +60,21 @@ def listen_for_messages(sock):
         except Exception as e:
             print(f"[Fehler beim Empfangen]: {e}")
 
+def sende_join_broadcast(handle, port, whoisport):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    msg = f"JOIN {handle} {port}"
+    sock.sendto(msg.encode(), ('<broadcast>', whoisport))
+    sock.close()
+
 def main():
     """Discovery-Dienst: Empfängt JOIN, LEAVE, WHO und antwortet darauf."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(('', WHOISPORT))
     listen_for_messages(sock)
+
+    # Nach dem Laden der Konfiguration:
+    sende_join_broadcast(config["handle"], config["port"], config["whoisport"])
 
 if __name__ == "__main__":
     main()
