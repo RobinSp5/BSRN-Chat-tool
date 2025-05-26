@@ -135,26 +135,18 @@ class ChatApp:
         """Verarbeitet Chat-Befehle"""
         parts = command.split(' ', 2)
         cmd = parts[0].lower()
-        
-        print(f"Debug: Verarbeite Befehl: {cmd}")
-        
+
         if cmd == '/join':
             self.join_chat()
         elif cmd == '/leave':
             self.leave_chat()
         elif cmd == '/who':
-            try:
-                self.to_discovery.put("WHO")
-                self.zeige_nachricht("🔍 Suche Teilnehmer...")
-            except Exception as e:
-                print(f"Debug: Fehler bei WHO: {e}")
-                self.zeige_nachricht("🔍 Suche Teilnehmer... (Offline-Modus)")
+            self.suche_teilnehmer()
         elif cmd == '/msg' and len(parts) >= 3:
             try:
                 self.to_network.put(f"MSG {parts[1]} {parts[2]}")
                 self.zeige_nachricht(f"An {parts[1]}: {parts[2]}")
             except Exception as e:
-                print(f"Debug: Fehler bei MSG: {e}")
                 self.zeige_nachricht(f"An {parts[1]}: {parts[2]}")
         elif cmd == '/help':
             self.show_help()
@@ -163,6 +155,31 @@ class ChatApp:
         else:
             self.zeige_nachricht("❌ Unbekannter Befehl. /help für Hilfe")
 
+    def suche_teilnehmer(self):
+        """Sendet WHO und zeigt Teilnehmer an oder Feedback wenn alleine"""
+        try:
+            self.to_discovery.put("WHO")
+            self.zeige_nachricht("🔍 Suche Teilnehmer...")
+            # Warte kurz auf Antworten
+            import time
+            users = []
+            start = time.time()
+            while time.time() - start < 2:
+                try:
+                    msg = self.from_network.get(timeout=0.5)
+                    if msg.startswith("KNOWUSERS"):
+                        users.append(msg)
+                except queue.Empty:
+                    continue
+            if users:
+                self.zeige_nachricht("👥 Teilnehmer im Chat:")
+                for user in users:
+                    self.zeige_nachricht(user)
+            else:
+                self.zeige_nachricht("Du bist aktuell alleine im Chat.")
+        except Exception as e:
+            self.zeige_nachricht("Fehler bei /who.")
+
     def join_chat(self):
         """Tritt dem Chat bei"""
         if self.is_joined:
@@ -170,9 +187,8 @@ class ChatApp:
             return
         try:
             self.to_discovery.put(f"JOIN {self.config['handle']} {self.config['port']}")
-        except Exception as e:
-            print(f"Debug: Discovery nicht verfügbar: {e}")
-        
+        except Exception:
+            pass
         self.is_joined = True
         self.status_label.config(text="● Verbunden", fg='green')
         self.zeige_nachricht(f"✅ Chat beigetreten als '{self.config['handle']}'")
@@ -184,9 +200,8 @@ class ChatApp:
             return
         try:
             self.to_discovery.put(f"LEAVE {self.config['handle']}")
-        except Exception as e:
-            print(f"Debug: Discovery nicht verfügbar: {e}")
-        
+        except Exception:
+            pass
         self.is_joined = False
         self.status_label.config(text="● Getrennt", fg='red')
         self.zeige_nachricht("👋 Chat verlassen")
