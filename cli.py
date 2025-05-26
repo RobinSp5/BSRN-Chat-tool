@@ -50,6 +50,26 @@ def parse_knownusers(msg):
                 known_users[handle] = (ip, int(port))
         print("[INFO] Bekannte Nutzer aktualisiert:", known_users)
 
+# === Wartet kurz auf KNOWUSERS-Antworten und gibt Feedback ===
+def handle_who(from_network):
+    """Wartet kurz auf KNOWUSERS-Antworten und gibt Feedback."""
+    import time
+    users = []
+    start = time.time()
+    while time.time() - start < 2:  # 2 Sekunden auf Antworten warten
+        try:
+            msg = from_network.get(timeout=0.5)
+            if msg.startswith("KNOWUSERS"):
+                users.append(msg)
+        except queue.Empty:
+            continue
+    if users:
+        print("Bekannte Nutzer im Chat:")
+        for user in users:
+            print(user)
+    else:
+        print("Du bist aktuell alleine im Chat.")
+
 # === Startet das CLI (Command Line Interface) ===
 def cli_loop(to_network, from_network, to_discovery):
     config = lade_konfiguration()  # Konfiguration laden
@@ -104,7 +124,7 @@ def cli_loop(to_network, from_network, to_discovery):
             # === Teilnehmer im Netzwerk erfragen (WHO) ===
             elif befehl == "/who":
                 to_discovery.put("WHO")
-                print("WHO gesendet")
+                handle_who(from_network)
 
             # === Nachricht an anderen Nutzer senden (MSG) ===
             elif befehl == "/msg":

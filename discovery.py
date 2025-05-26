@@ -66,7 +66,7 @@ def handle_message(message, addr, sock):
 
  #   elif befehl == "KNOWUSERS": nicht für den Discovery-Dienst relevant
 
- #(erstmal auslassen, weil Terminal sonst mit [UNBEKANNT]-NAchichten überflutet) 
+ #(erstmal auslassen, weil Terminal sonst mit [UNBEKANNT]-NAchrichten überflutet) 
  #   else:
  #      print(f"[UNBEKANNT] Nachricht ignoriert: {message}")  # Unbekannter Befehl
 
@@ -96,26 +96,16 @@ def send_periodic_who(sock, target):
 
 def main():
     # UDP-Socket erstellen
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # UDP-Socket
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)  # Broadcast aktivieren
-    sock.bind(('', WHOISPORT))  # An allen IP-Adressen auf whoisport lauschen
-
-    broadcast_addr = ("255.255.255.255", WHOISPORT)  # Zieladresse für Broadcast
-
-    # JOIN-Nachricht beim Start verschicken
-    sock.sendto(slcp_join().encode(), broadcast_addr)
-    print("[JOIN] JOIN-Nachricht gesendet")
-
-    # Starte WHO-Sende-Thread
-    threading.Thread(target=send_periodic_who, args=(sock, broadcast_addr), daemon=True).start()
-
-    # Haupt-Listener-Schleife starten
-    try:
-        listen_for_messages(sock)  # Empfängt und verarbeitet eingehende UDP-Nachrichten
-    except KeyboardInterrupt:
-        print("[Beende Discovery-Dienst]")
-        sock.sendto(slcp_leave().encode(), broadcast_addr)  # LEAVE-Nachricht verschicken
-        sock.close()  # Socket schließen
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind(('', 5000))  # oder dynamisch
+    while True:
+        data, addr = sock.recvfrom(1024)
+        msg = data.decode()
+        if msg == "WHO":
+            # Antwort senden
+            antwort = f"KNOWUSERS {dein_name} {deine_ip} {dein_port}"
+            sock.sendto(antwort.encode(), addr)
+        # KEIN sock.sendto("WHO".encode(), ...) hier!
 
 # - PROGRAMMEINSTIEG 
 if __name__ == "__main__":
