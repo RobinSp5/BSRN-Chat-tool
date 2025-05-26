@@ -1,112 +1,70 @@
-import socket           # Modul für Netzwerkkommunikation (z. B. UDP-Sockets)
-import threading        # Ermöglicht parallele Ausführung (z. B. WHO senden & Nachrichten empfangen gleichzeitig)
-import time             # Wird benötigt für Pausen (Sleep) zwischen WHO-Nachrichten
-import toml             # Ermöglicht das Einlesen von .toml-Konfigurationsdateien
-import sys              # Wird genutzt um das Programm kontrolliert zu beenden
+import socket
+import threading
+import toml
+import sys
 
-# ======= TOML-KONFIGURATION LADEN ========
-CONFIG_PATH = "config.toml"  # Pfad zur Konfigurationsdatei
+CONFIG_PATH = "config.toml"
 
 try:
-    config = toml.load(CONFIG_PATH)  # Konfigurationsdatei laden
-
-    # Einzelne Werte aus der Datei lesen (flache Struktur)
-    HANDLE = config["handle"]                     # Benutzername (Handle)
-    PORT = config["port"]                         # Eigener UDP-Port
-    WHOISPORT = config["whoisport"]               # Port für Discovery-Broadcast
-    AUTOREPLY = config["autoreply"]               # Abwesenheitsnachricht
-    IMAGEPATH = config["imagepath"]               # Speicherort für empfangene Bilder
-    AWAY = config["away"]                         # Abwesenheitsstatus (True/False)
+    config = toml.load(CONFIG_PATH)
+    HANDLE = config["handle"]
+    PORT = config["port"]
+    WHOISPORT = config["whoisport"]
 except Exception as e:
     print(f"Fehler beim Laden der Konfiguration: {e}")
-    sys.exit(1)  # Programm beenden bei Fehlern in der Konfiguration
+    sys.exit(1)
 
-# ======= SLCP-NACHRICHTENBAUSTEINE =========
-# Erzeugt SLCP-konforme Textnachrichten zur Kommunikation
+users = {}  # {handle: (ip, port)}
 
 def slcp_join():
-    return f"JOIN {HANDLE} {PORT}"  # JOIN: Meldet sich im Netzwerk an
+    return f"JOIN {HANDLE} {PORT}"
 
 def slcp_leave():
-    return f"LEAVE {HANDLE}"         # LEAVE: Meldet sich vom Netzwerk ab
+    return f"LEAVE {HANDLE}"
 
 def slcp_who():
-    return "WHO"                      # WHO: Anfrage nach bekannten Nutzern
-
-# - NUTZERLISTE 
-users = {}  # Speichert bekannte Nutzer in Form: {handle: (ip, port)}
-
-# - EINGEHENDE NACHRICHTEN VERARBEITEN 
+    return "WHO"
 
 def handle_message(message, addr, sock):
-    teile = message.strip().split()  # Nachricht in Einzelteile zerlegen
+    teile = message.strip().split()
     if not teile:
-        return  # Leere Nachricht ignorieren
+        return
 
-    befehl = teile[0]  # Der erste Teil ist der Befehl (JOIN, LEAVE, WHO)
+    befehl = teile[0]
 
     if befehl == "JOIN" and len(teile) == 3:
-        handle = teile[1]  # Nutzername
-        port = int(teile[2])  # Port des Nutzers
-        users[handle] = (addr[0], port)  # IP-Adresse aus Absender + Port aus Nachricht
+        handle = teile[1]
+        port = int(teile[2])
+        users[handle] = (addr[0], port)
         print(f"[JOIN] {handle} ist beigetreten von {addr[0]}:{port}")
 
     elif befehl == "LEAVE" and len(teile) == 2:
         handle = teile[1]
         if handle in users:
-            del users[handle]  # Nutzer aus Liste entfernen
+            del users[handle]
             print(f"[LEAVE] {handle} hat den Chat verlassen")
 
     elif befehl == "WHO":
-        # Antwort zusammenbauen mit allen bekannten Nutzern
         antwort = "KNOWUSERS " + ", ".join(f"{h} {ip} {p}" for h, (ip, p) in users.items())
-        sock.sendto(antwort.encode("utf-8"), addr)  # Antwort an Fragenden senden
+        sock.sendto(antwort.encode("utf-8"), addr)
         print(f"[WHO] Antwort gesendet an {addr[0]}:{addr[1]}")
-
-
- #   elif befehl == "KNOWUSERS": nicht für den Discovery-Dienst relevant
-
- #(erstmal auslassen, weil Terminal sonst mit [UNBEKANNT]-NAchrichten überflutet) 
- #   else:
- #      print(f"[UNBEKANNT] Nachricht ignoriert: {message}")  # Unbekannter Befehl
-
-# - EINGEHENDE NACHRICHTEN EMPFANGEN 
 
 def listen_for_messages(sock):
     """Empfängt dauerhaft UDP-Nachrichten und leitet sie zur Verarbeitung weiter"""
     while True:
         try:
-            data, addr = sock.recvfrom(1024)  # Höre auf Nachrichten (max 1024 Byte)
-            message = data.decode()           # Bytes zu String umwandeln
+            data, addr = sock.recvfrom(1024)
+            message = data.decode()
             print(f"[Discovery] Nachricht von {addr}: {message}")
-            handle_message(message, addr, sock)  # Nachricht verarbeiten
+            handle_message(message, addr, sock)
         except Exception as e:
             print(f"[Fehler beim Empfangen]: {e}")
 
-# - PERIODISCH WHO SENDEN 
-
-def send_periodic_who(sock, target):
-    """Sendet regelmäßig WHO-Anfragen per Broadcast"""
-    while True:
-        sock.sendto(slcp_who().encode(), target)  # WHO senden
-        print("[WHO] WHO-Nachricht gesendet")
-        time.sleep(5)  # Harte 5-Sekunden-Intervalle für diesen minimalen Dienst
-
-# - HAUPTPROZESS DES DISCOVERY-DIENSTES 
-
 def main():
-    # UDP-Socket erstellen
+    """Discovery-Dienst: Empfängt JOIN, LEAVE, WHO und antwortet darauf."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(('', 5000))  # oder dynamisch
-    while True:
-        data, addr = sock.recvfrom(1024)
-        msg = data.decode()
-        if msg == "WHO":
-            # Antwort senden
-            antwort = f"KNOWUSERS {dein_name} {deine_ip} {dein_port}"
-            sock.sendto(antwort.encode(), addr)
-        # KEIN sock.sendto("WHO".encode(), ...) hier!
+    sock.bind(('', WHOISPORT))
+    listen_for_messages(sock)
 
-# - PROGRAMMEINSTIEG 
 if __name__ == "__main__":
-    main()  # Starte Discovery-Dienst
+    main()
