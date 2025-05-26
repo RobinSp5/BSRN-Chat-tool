@@ -5,7 +5,6 @@ import socket       # Für Netzwerkverbindungen über UDP
 
 # Eigene Module einbinden
 from discovery import main as discovery_main  # Startet den Discovery-Dienst (JOIN, WHO, LEAVE)
-from server import start_server               # Startet den Nachrichtenspeicher (Server-Empfänger)
 from cli import cli_loop                      # Startet die Kommandozeile (Benutzereingabe)
 
 # === Hilfsfunktion: Freien Port finden ===
@@ -44,6 +43,25 @@ def bridge_discovery_queue(to_discovery, discovery_port):
         except Exception as e:
             print(f"❌ Fehler beim Discovery-Bridge: {e}")
 
+# === Server-Funktion: Wartet auf Nachrichten und gibt sie aus ===
+def start_server(listen_port=5001, from_network=None):
+    """
+    Startet einen UDP-Server, der auf dem angegebenen Port auf Nachrichten wartet.
+    Jede empfangene Nachricht wird mit Absenderadresse auf der Konsole ausgegeben
+    und optional in die from_network-Queue gelegt.
+    """
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind(('', listen_port))
+    print(f"Empfange Nachrichten auf Port {listen_port}...")
+
+    while True:
+        data, addr = sock.recvfrom(1024)
+        msg = data.decode()
+        print(f"Nachricht von {addr}: {msg}")
+        # Nachricht in die Queue legen, wenn vorhanden
+        if from_network is not None:
+            from_network.put(msg)
+
 # === Hauptfunktion: Startet alle Programmteile ===
 def main():
     # --- 1) Konfiguration aus Datei laden ---
@@ -78,7 +96,7 @@ def main():
     threading.Thread(target=bridge_discovery_queue, args=(to_discovery, discovery_port), daemon=True).start()
 
     # --- 7) Nachrichtenserver starten (zum Empfang von MSG, IMG etc.) ---
-    threading.Thread(target=start_server, args=(server_port,), daemon=True).start()
+    threading.Thread(target=start_server, args=(server_port, from_network), daemon=True).start()
 
     # --- 8) CLI starten (Benutzereingaben & Anzeige) ---
     print("💬 Starte CLI. Mit /help bekommst du alle Befehle.")
