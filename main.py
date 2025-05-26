@@ -55,7 +55,7 @@ def main():
         return  # Ohne Konfiguration kein Start
 
     # --- 2) Ports aus der Konfiguration holen oder Standardwerte setzen ---
-    peer_port      = config.get("port", 5000)
+    peer_port      = config.get("port", 4000)
     discovery_port = config.get("whoisport", peer_port)
     server_port    = config.get("serverport", peer_port + 1)
 
