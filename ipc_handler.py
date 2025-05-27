@@ -17,7 +17,15 @@ def discovery_loop(to_discovery, from_network, config):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    try:
+        sock.bind(('', whois_port))
+    except OSError:
+        print(f"[⚠️] Port {whois_port} belegt – versuche nächsthöheren Port...")
+    whois_port += 1
     sock.bind(('', whois_port))
+    print(f"[✅] Neuer WHOIS-Port: {whois_port}")
+
+    
 
     print(f"[Discovery] Läuft auf Port {whois_port}")
 
