@@ -6,6 +6,7 @@ import socket       # Für Netzwerkverbindungen über UDP
 # Eigene Module einbinden
 from cli import cli_loop, benutzername_abfragen_und_speichern, find_free_udp_port                      # Startet die Kommandozeile (Benutzereingabe)
 from ipc_handler import ipc_handler           # Startet die zentrale Netzwerk-Kommunikation
+from discovery import main as discovery_main
 
 # === Hauptfunktion: Startet alle Programmteile ===
 def main():
@@ -37,10 +38,17 @@ def main():
     from_network = queue.Queue()  # Vom Netzwerk an CLI (Empfang)
     to_discovery = queue.Queue()  # Von CLI an Discovery
 
-    # --- 5) IPC-Handler starten (zentraler Netzwerkdienst: Empfangen, Senden, Discovery) ---
+    # --- 5) Discovery-Dienst im Hintergrund starten ---
+    threading.Thread(
+        target=discovery_main, 
+        args=(discovery_port, config['handle'], peer_port), 
+        daemon=True
+    ).start()
+
+    # --- 6) IPC-Handler starten (zentraler Netzwerkdienst: Empfangen, Senden, Discovery) ---
     threading.Thread(target=ipc_handler, args=(to_network, from_network, to_discovery, config), daemon=True).start()
 
-    # --- 6) CLI starten (Benutzereingaben & Anzeige) ---
+    # --- 7) CLI starten (Benutzereingaben & Anzeige) ---
     print("💬 Starte CLI. Mit /help bekommst du alle Befehle.")
     try:
         cli_loop(to_network, from_network, to_discovery)

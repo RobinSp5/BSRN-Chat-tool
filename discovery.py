@@ -3,29 +3,10 @@ import threading
 import toml
 import sys
 
-CONFIG_PATH = "config.toml"
-
-try:
-    config = toml.load(CONFIG_PATH)
-    HANDLE = config["handle"]
-    PORT = config["port"]
-    WHOISPORT = config["whoisport"]
-except Exception as e:
-    print(f"Fehler beim Laden der Konfiguration: {e}")
-    sys.exit(1)
-
 users = {}  # {handle: (ip, port)}
 
-def slcp_join():
-    return f"JOIN {HANDLE} {PORT}"
-
-def slcp_leave():
-    return f"LEAVE {HANDLE}"
-
-def slcp_who():
-    return "WHO"
-
 def handle_message(message, addr, sock):
+    """Verarbeitet eingehende Discovery-Nachrichten"""
     teile = message.strip().split()
     if not teile:
         return
@@ -45,9 +26,13 @@ def handle_message(message, addr, sock):
             print(f"[LEAVE] {handle} hat den Chat verlassen")
 
     elif befehl == "WHO":
-        antwort = "KNOWUSERS " + ", ".join(f"{h} {ip} {p}" for h, (ip, p) in users.items())
+        if users:
+            # Antwort mit allen bekannten Benutzern
+            antwort = "KNOWUSERS " + ", ".join(f"{h} {ip} {p}" for h, (ip, p) in users.items())
+        else:
+            antwort = "KNOWUSERS"
         sock.sendto(antwort.encode("utf-8"), addr)
-        print(f"[WHO] Antwort gesendet an {addr[0]}:{addr[1]}")
+        print(f"[WHO] Antwort gesendet an {addr[0]}:{addr[1]}: {antwort}")
 
 def listen_for_messages(sock):
     """Empfängt dauerhaft UDP-Nachrichten und leitet sie zur Verarbeitung weiter"""
@@ -58,23 +43,35 @@ def listen_for_messages(sock):
             print(f"[Discovery] Nachricht von {addr}: {message}")
             handle_message(message, addr, sock)
         except Exception as e:
-            print(f"[Fehler beim Empfangen]: {e}")
+            print(f"[Discovery Fehler]: {e}")
 
 def sende_join_broadcast(handle, port, whoisport):
+    """Sendet JOIN-Broadcast beim Start"""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     msg = f"JOIN {handle} {port}"
     sock.sendto(msg.encode(), ('<broadcast>', whoisport))
     sock.close()
+    print(f"[Discovery] JOIN-Broadcast gesendet: {msg}")
 
-def main():
+def main(discovery_port=4000, handle="Unknown", port=5000):
     """Discovery-Dienst: Empfängt JOIN, LEAVE, WHO und antwortet darauf."""
+    print(f"[Discovery] Starte Discovery-Dienst auf Port {discovery_port}")
+    
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(('', WHOISPORT))
+    sock.bind(('', discovery_port))
+    
+    # Eigenen JOIN senden
+    sende_join_broadcast(handle, port, discovery_port)
+    
+    # Auf Nachrichten hören
     listen_for_messages(sock)
 
-    # Nach dem Laden der Konfiguration:
-    sende_join_broadcast(config["handle"], config["port"], config["whoisport"])
-
 if __name__ == "__main__":
-    main()
+    # Nur für direkten Test
+    try:
+        config = toml.load("config.toml")
+        main(config.get("whoisport", 4000), config.get("handle", "Test"), config.get("port", 5000))
+    except Exception as e:
+        print(f"Fehler: {e}")
+        main()
