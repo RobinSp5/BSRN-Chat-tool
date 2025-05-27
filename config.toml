@@ -1,6 +1,10 @@
+<<<<<<< HEAD
 handle = "Robin"
+=======
+handle = "Karl"
+>>>>>>> 6f90531546e921ba1fb28c1b97370d81720663e2
 port = 5000
 whoisport = 4000
-autoreply = "Ich bin gerade nicht verfügbar."
+autoreply = "Ich bin gerade nicht verfuegbar."
 imagepath = "./bilder"
 away = false
