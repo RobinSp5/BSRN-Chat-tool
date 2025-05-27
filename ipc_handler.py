@@ -1,6 +1,11 @@
+import toml
 import threading
 import queue
 import socket
+
+from cli import cli_loop
+from discovery import main as discovery_main, sende_join_broadcast
+from server import start_server
 
 # SLCP-Nachricht parsen
 def parse_slcp(msg: str):
@@ -16,6 +21,17 @@ def parse_slcp(msg: str):
             "command": parts[0],
             "raw": msg
         }
+
+def find_free_udp_port(start_port: int) -> int:
+    """Findet ab start_port den ersten freien UDP-Port."""
+    port = start_port
+    while True:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            try:
+                s.bind(('', port))
+                return port
+            except OSError:
+                port += 1
 
 def ipc_handler(to_network, from_network, to_discovery, config):
     """
@@ -88,3 +104,140 @@ def ipc_handler(to_network, from_network, to_discovery, config):
     threading.Thread(target=empfangen, daemon=True).start()
     threading.Thread(target=senden, daemon=True).start()
     threading.Thread(target=discovery_listener, daemon=True).start()
+
+def network_sender(to_network, config):
+    """Sendet Nachrichten aus der to_network Queue über das Netzwerk"""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    
+    while True:
+        try:
+            message = to_network.get()
+            if message.startswith("MSG"):
+                # Format: "MSG Broadcast Hallo Welt" oder "MSG user123 Private Nachricht"
+                parts = message.split(' ', 2)
+                if len(parts) >= 3:
+                    target = parts[1]
+                    text = parts[2]
+                    
+                    if target == "Broadcast":
+                        # Broadcast an alle
+                        slcp_msg = f"MSG {config['handle']} {text}"
+                        sock.sendto(slcp_msg.encode(), ('<broadcast>', config['port']))
+                    else:
+                        # Private Nachricht (hier vereinfacht als Broadcast)
+                        slcp_msg = f"MSG {config['handle']} @{target} {text}"
+                        sock.sendto(slcp_msg.encode(), ('<broadcast>', config['port']))
+                        
+            elif message.startswith("IMG"):
+                # Bildnachricht
+                parts = message.split(' ', 2)
+                if len(parts) >= 3:
+                    target = parts[1]
+                    filepath = parts[2]
+                    slcp_msg = f"IMG {config['handle']} {filepath}"
+                    sock.sendto(slcp_msg.encode(), ('<broadcast>', config['port']))
+                    
+        except Exception as e:
+            print(f"❌ Fehler beim Senden: {e}")
+
+def discovery_bridge(to_discovery, config):
+    """Bridge zwischen CLI-Discovery-Befehlen und UDP-Broadcasts"""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    
+    while True:
+        try:
+            command = to_discovery.get()
+            
+            if command == "WHO":
+                sock.sendto("WHO".encode(), ('<broadcast>', config['whoisport']))
+                
+            elif command.startswith("JOIN"):
+                parts = command.split(' ', 2)
+                if len(parts) >= 3:
+                    handle = parts[1]
+                    port = parts[2]
+                    msg = f"JOIN {handle} {port}"
+                    sock.sendto(msg.encode(), ('<broadcast>', config['whoisport']))
+                    
+            elif command.startswith("LEAVE"):
+                parts = command.split(' ', 1)
+                if len(parts) >= 2:
+                    handle = parts[1]
+                    msg = f"LEAVE {handle}"
+                    sock.sendto(msg.encode(), ('<broadcast>', config['whoisport']))
+                    
+        except Exception as e:
+            print(f"❌ Fehler bei Discovery-Bridge: {e}")
+
+def main():
+    # 1) Konfiguration laden
+    try:
+        config = toml.load("config.toml")
+        print("✅ Konfiguration geladen aus config.toml")
+    except Exception as e:
+        print(f"❌ Fehler beim Laden der Konfiguration: {e}")
+        return
+
+    # 2) Ports setzen
+    peer_port = config.get("port", 5000)
+    discovery_port = config.get("whoisport", peer_port)
+    server_port = config.get("serverport", peer_port + 1)
+
+    # 3) Freie Ports finden
+    discovery_port = find_free_udp_port(discovery_port)
+    server_port = find_free_udp_port(server_port)
+    peer_port = find_free_udp_port(peer_port)
+
+    # Aktualisiere Config mit gefundenen Ports
+    config["port"] = peer_port
+    config["whoisport"] = discovery_port
+    config["serverport"] = server_port
+
+    print(f"🔍 Discovery läuft auf UDP-Port {discovery_port}")
+    print(f"🖥️ Server hört auf UDP-Port {server_port}")
+    print(f"📡 Chat-Port: {peer_port}")
+
+    # 4) Queues erstellen
+    to_network = queue.Queue()
+    from_network = queue.Queue()
+    to_discovery = queue.Queue()
+
+    # 5) Discovery-Dienst starten
+    threading.Thread(target=discovery_main, daemon=True).start()
+
+    # 6) Netzwerk-Sender starten
+    threading.Thread(target=network_sender, args=(to_network, config), daemon=True).start()
+
+    # 7) Discovery-Bridge starten
+    threading.Thread(target=discovery_bridge, args=(to_discovery, config), daemon=True).start()
+
+    # 8) Server für eingehende Nachrichten starten
+    threading.Thread(target=start_server, args=(server_port, from_network), daemon=True).start()
+
+    # 9) JOIN-Broadcast beim Start senden
+    sende_join_broadcast(config["handle"], config["port"], config["whoisport"])
+
+    # 10) CLI starten
+    print("💬 Starte CLI. Mit /help bekommst du alle Befehle.")
+    print(f"💡 Du bist als '{config['handle']}' unterwegs")
+    
+    try:
+        cli_loop(to_network, from_network, to_discovery)
+    except KeyboardInterrupt:
+        print("\n👋 CLI beendet durch Benutzer.")
+        # LEAVE senden beim Beenden
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            leave_msg = f"LEAVE {config['handle']}"
+            sock.sendto(leave_msg.encode(), ('<broadcast>', config['whoisport']))
+            sock.close()
+        except:
+            pass
+    except Exception as e:
+        print(f"❌ Fehler in der CLI: {e}")
+
+if __name__ == "__main__":
+    main()

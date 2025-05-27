@@ -1,9 +1,10 @@
-import sys  # Für Dinge wie das Programm beenden oder Fehler ausgeben
-import threading  # Damit das Programm mehrere Dinge gleichzeitig machen kann (z. B. Nachrichten empfangen)
-import queue # Eine Art „Postkorb“ für Nachrichten zwischen den Programm-Teilen
-import toml # Damit wir die Einstellungen aus der Datei config.toml laden und speichern können
-import os  # Damit wir z. B. Ordner überprüfen oder erstellen können
-import subprocess  # Um ggf. ein Bild automatisch anzuzeigen
+# cli.py - korrigierte Version (ohne den zirkulären Import)
+import toml
+import threading
+import queue
+import socket
+import os
+import sys
 
 # === Globale Liste für bekannte Nutzer (Handle -> (IP, Port)) ===
 known_users = {}  # Speichert bekannte Nutzer
@@ -70,8 +71,63 @@ def handle_who(from_network):
     else:
         print("Du bist aktuell alleine im Chat.")
 
+# === Sucht ab einem gegebenen Startport den nächsten freien UDP-Port ===
+def find_free_udp_port(start_port: int) -> int:
+    """Sucht ab einem gegebenen Startport den nächsten freien UDP-Port."""
+    port = start_port
+    while True:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            try:
+                s.bind(('', port))
+                return port
+            except OSError:
+                port += 1
+
+# === Fragt den Benutzernamen ab und speichert ihn in der TOML-Datei ===
+def benutzername_abfragen_und_speichern(config_path="config.toml"):
+    """Fragt den Benutzernamen ab und speichert ihn in der TOML-Datei."""
+    try:
+        config = toml.load(config_path)
+    except Exception:
+        # Falls keine config.toml existiert, erstelle eine Standard-Konfiguration
+        config = {
+            "handle": "",
+            "port": 5000,
+            "whoisport": 4000,
+            "serverport": 5001,
+            "imagepath": "./bilder"
+        }
+    
+    # Aktuellen Namen anzeigen (falls vorhanden)
+    aktueller_name = config.get("handle", "")
+    if aktueller_name:
+        print(f"Aktueller Name: {aktueller_name}")
+        antwort = input("Möchtest du einen neuen Namen eingeben? (j/n): ").strip().lower()
+        if antwort not in ['j', 'ja', 'y', 'yes']:
+            return config
+    
+    # Nach neuem Namen fragen
+    while True:
+        name = input("Wie möchtest du heißen? ").strip()
+        if name:
+            config["handle"] = name
+            break
+        else:
+            print("❌ Bitte gib einen gültigen Namen ein!")
+    
+    # Konfiguration speichern
+    try:
+        with open(config_path, 'w') as f:
+            toml.dump(config, f)
+        print(f"✅ Name '{name}' wurde in der Konfiguration gespeichert.")
+        return config
+    except Exception as e:
+        print(f"❌ Fehler beim Speichern der Konfiguration: {e}")
+        return config
+
 # === Startet das CLI (Command Line Interface) ===
 def cli_loop(to_network, from_network, to_discovery):
+    """Hauptschleife der CLI - verarbeitet Benutzereingaben"""
     config = lade_konfiguration()  # Konfiguration laden
 
     print("Willkommen im SLCP-Chat (CLI-Version)")
@@ -187,3 +243,47 @@ def cli_loop(to_network, from_network, to_discovery):
         except (KeyboardInterrupt, EOFError):
             print("\nBeende CLI...")
             break
+
+def main():
+    print("🚀 SLCP Chat wird gestartet...")
+    
+    # --- 1) Nach Benutzername fragen und Konfiguration laden/speichern ---
+    config = benutzername_abfragen_und_speichern()
+    
+    if not config.get("handle"):
+        print("❌ Kein gültiger Name konfiguriert. Programm wird beendet.")
+        return
+
+    print(f"✅ Willkommen, {config['handle']}!")
+
+    # --- 2) Ports aus der Konfiguration holen oder Standardwerte setzen ---
+    peer_port      = config.get("port", 5000)
+    discovery_port = config.get("whoisport", peer_port)
+    server_port    = config.get("serverport", peer_port + 1)
+
+    # --- 3) Prüfen, ob Ports frei sind ---
+    discovery_port = find_free_udp_port(discovery_port)
+    server_port    = find_free_udp_port(server_port)
+
+    print(f"🔍 Discovery läuft auf UDP-Port {discovery_port}")
+    print(f"🖥️ Server hört auf UDP-Port {server_port}")
+
+    # --- 4) Queues für Kommunikation zwischen den Komponenten ---
+    to_network   = queue.Queue()
+    from_network = queue.Queue()
+    to_discovery = queue.Queue()
+
+    # --- 5) IPC-Handler starten ---
+    threading.Thread(target=ipc_handler, args=(to_network, from_network, to_discovery, config), daemon=True).start()
+
+    # --- 6) CLI starten ---
+    print("💬 Starte CLI. Mit /help bekommst du alle Befehle.")
+    try:
+        cli_loop(to_network, from_network, to_discovery)
+    except KeyboardInterrupt:
+        print("\n👋 CLI beendet durch Benutzer.")
+    except Exception as e:
+        print(f"❌ Fehler in der CLI: {e}")
+
+if __name__ == "__main__":
+    main()
