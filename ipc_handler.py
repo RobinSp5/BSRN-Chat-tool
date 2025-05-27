@@ -78,3 +78,12 @@ def discovery_loop(to_discovery, from_network, config):
 
         except Exception:
             continue
+        
+# === Einstiegspunkt für main.py ===
+def ipc_handler(to_network, from_network, to_discovery, config):
+    # Starte Discovery-Dienst in einem Thread
+    threading.Thread(target=discovery_loop, args=(to_discovery, from_network, config), daemon=True).start()
+
+    # TODO: Weitere Netzwerk-Komponenten wie MSG/IMG können hier ergänzt werden
+    while True:
+        time.sleep(1)  # Platzhalter-Loop
