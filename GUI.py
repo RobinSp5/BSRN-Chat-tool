@@ -211,6 +211,8 @@ class ChatApp:
         self.status_label.config(text="● Getrennt", fg='red')
         self.zeige_nachricht("👋 Chat verlassen")
 
+
+    #DIESE FUNKTION MUSS NOCH IMPLEMENTIERT WERDEN
     def send_image(self):
         """Öffnet Dateidialog und sendet ein Bild an alle (nur wenn beigetreten)."""
         if not self.is_joined:

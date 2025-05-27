@@ -4,8 +4,8 @@ import queue        # Für die Kommunikation zwischen den Modulen (Nachrichtenwa
 import socket       # Für Netzwerkverbindungen über UDP
 
 # Eigene Module einbinden
-from discovery import main as discovery_main  # Startet den Discovery-Dienst (JOIN, WHO, LEAVE)
 from cli import cli_loop                      # Startet die Kommandozeile (Benutzereingabe)
+from ipc_handler import ipc_handler           # Startet die zentrale Netzwerk-Kommunikation
 
 # === Hilfsfunktion: Freien Port finden ===
 def find_free_udp_port(start_port: int) -> int:
@@ -21,46 +21,6 @@ def find_free_udp_port(start_port: int) -> int:
                 return port
             except OSError:
                 port += 1  # Sonst nächsten Port versuchen
-
-# === Bridge-Funktion: WHO aus der CLI ins Netzwerk senden ===
-def bridge_discovery_queue(to_discovery, discovery_port):
-    """
-    Wartet auf WHO-Befehle in der CLI-Queue und sendet diese per UDP-Broadcast.
-    So können Nutzer im Netzwerk gefunden werden.
-    """
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-
-    while True:
-        try:
-            command = to_discovery.get(timeout=1)
-            if command == "WHO":
-                # WHO-Befehl senden an alle im lokalen Netzwerk
-                sock.sendto("WHO".encode(), ('<broadcast>', discovery_port))
-                print("🔍 WHO-Anfrage gesendet...")
-        except queue.Empty:
-            continue  # Wenn nichts da ist → einfach weiter warten
-        except Exception as e:
-            print(f"❌ Fehler beim Discovery-Bridge: {e}")
-
-# === Server-Funktion: Wartet auf Nachrichten und gibt sie aus ===
-def start_server(listen_port=5001, from_network=None):
-    """
-    Startet einen UDP-Server, der auf dem angegebenen Port auf Nachrichten wartet.
-    Jede empfangene Nachricht wird mit Absenderadresse auf der Konsole ausgegeben
-    und optional in die from_network-Queue gelegt.
-    """
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(('', listen_port))
-    print(f"Empfange Nachrichten auf Port {listen_port}...")
-
-    while True:
-        data, addr = sock.recvfrom(1024)
-        msg = data.decode()
-        print(f"Nachricht von {addr}: {msg}")
-        # Nachricht in die Queue legen, wenn vorhanden
-        if from_network is not None:
-            from_network.put(msg)
 
 # === Hauptfunktion: Startet alle Programmteile ===
 def main():
@@ -86,19 +46,13 @@ def main():
 
     # --- 4) Queues für Kommunikation zwischen den Komponenten ---
     to_network   = queue.Queue()  # Von CLI an den Netzwerk-Sender
-    from_network = queue.Queue()  # Vom Server an CLI (Empfang)
-    to_discovery = queue.Queue()  # Von CLI an Discovery-Bridge (z. B. WHO)
+    from_network = queue.Queue()  # Vom Netzwerk an CLI (Empfang)
+    to_discovery = queue.Queue()  # Von CLI an Discovery
 
-    # --- 5) Discovery-Dienst starten (für JOIN, LEAVE, WHO empfangen) ---
-    threading.Thread(target=discovery_main, daemon=True).start()
+    # --- 5) IPC-Handler starten (zentraler Netzwerkdienst: Empfangen, Senden, Discovery) ---
+    threading.Thread(target=ipc_handler, args=(to_network, from_network, to_discovery, config), daemon=True).start()
 
-    # --- 6) Discovery-Bridge starten (damit WHO aus der CLI im Netzwerk landet) ---
-    threading.Thread(target=bridge_discovery_queue, args=(to_discovery, discovery_port), daemon=True).start()
-
-    # --- 7) Nachrichtenserver starten (zum Empfang von MSG, IMG etc.) ---
-    threading.Thread(target=start_server, args=(server_port, from_network), daemon=True).start()
-
-    # --- 8) CLI starten (Benutzereingaben & Anzeige) ---
+    # --- 6) CLI starten (Benutzereingaben & Anzeige) ---
     print("💬 Starte CLI. Mit /help bekommst du alle Befehle.")
     try:
         cli_loop(to_network, from_network, to_discovery)
