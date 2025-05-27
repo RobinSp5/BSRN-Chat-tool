@@ -1,36 +1,24 @@
 import toml         # Zum Einlesen der Konfigurationsdatei (config.toml)
-import threading    # Um mehrere Dinge gleichzeitig auszuführen (z. B. Server, CLI, Discovery)
+import threading    # Um mehrere Dinge gleichzeitig auszuführen (z. B. Server, CLI, Discovery)
 import queue        # Für die Kommunikation zwischen den Modulen (Nachrichtenwarteschlangen)
 import socket       # Für Netzwerkverbindungen über UDP
 
 # Eigene Module einbinden
-from cli import cli_loop                      # Startet die Kommandozeile (Benutzereingabe)
+from cli import cli_loop, benutzername_abfragen_und_speichern, find_free_udp_port                      # Startet die Kommandozeile (Benutzereingabe)
 from ipc_handler import ipc_handler           # Startet die zentrale Netzwerk-Kommunikation
-
-# === Hilfsfunktion: Freien Port finden ===
-def find_free_udp_port(start_port: int) -> int:
-    """
-    Sucht ab einem gegebenen Startport den nächsten freien UDP-Port.
-    Wichtig, falls Standardports bereits belegt sind.
-    """
-    port = start_port
-    while True:
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            try:
-                s.bind(('', port))  # Wenn erfolgreich, Port ist frei
-                return port
-            except OSError:
-                port += 1  # Sonst nächsten Port versuchen
 
 # === Hauptfunktion: Startet alle Programmteile ===
 def main():
-    # --- 1) Konfiguration aus Datei laden ---
-    try:
-        config = toml.load("config.toml")  # TOML-Datei mit Benutzernamen, Ports usw.
-        print("✅ Konfiguration geladen aus config.toml")
-    except Exception as e:
-        print(f"❌ Fehler beim Laden der Konfiguration: {e}")
-        return  # Ohne Konfiguration kein Start
+    print("🚀 SLCP Chat wird gestartet...")
+    
+    # --- 1) Nach Benutzername fragen und Konfiguration laden/speichern ---
+    config = benutzername_abfragen_und_speichern()
+    
+    if not config.get("handle"):
+        print("❌ Kein gültiger Name konfiguriert. Programm wird beendet.")
+        return
+
+    print(f"✅ Willkommen, {config['handle']}!")
 
     # --- 2) Ports aus der Konfiguration holen oder Standardwerte setzen ---
     peer_port      = config.get("port", 5000)
