@@ -1,10 +1,27 @@
-<<<<<<< HEAD
-handle = "Robin"
-=======
-handle = "Karl"
->>>>>>> 6f90531546e921ba1fb28c1b97370d81720663e2
-port = 5000
-whoisport = 4000
-autoreply = "Ich bin gerade nicht verfuegbar."
-imagepath = "./bilder"
-away = false
+# Simple Local Chat Protocol (SLCP) Configuration
+
+[network]
+# UDP Port für Discovery Service
+discovery_port = 12345
+# TCP Port für Chat Server
+chat_port = 12346
+# Broadcast Adresse für Discovery
+broadcast_address = "255.255.255.255"
+# Discovery Intervall in Sekunden
+discovery_interval = 5
+
+[user]
+# Standard Nutzername (kann über CLI überschrieben werden)
+default_username = "ChatUser"
+# Maximale Nachrichtenlänge
+max_message_length = 1024
+# Maximale Bildgröße in Bytes (1MB)
+max_image_size = 1048576
+
+[system]
+# Timeout für Socket-Operationen in Sekunden
+socket_timeout = 5
+# Anzahl der Worker-Threads
+worker_threads = 2
+# Log-Level (DEBUG, INFO, WARNING, ERROR)
+log_level = "INFO"
