@@ -1,6 +1,0 @@
-handle = "Arda"
-port = 5000
-whoisport = 4000
-serverport = 5001
-autoreply = "Ich bin momentan nicht da. Ich antworte später."
-imagepath = "./bilder"
