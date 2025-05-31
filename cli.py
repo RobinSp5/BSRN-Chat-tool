@@ -39,27 +39,32 @@ class CLI:
         print("     Simple Local Chat (SLCP)")
         print("=" * 50)
         print(f"Nutzer: {self.chat_client.username}")
-        print("Verfügbare Befehle:")
-        print("  help           - Hilfe anzeigen")
-        print("  who            - Aktive Nutzer anzeigen")
-        print("  msg <text>     - Nachricht an alle senden")
-        print("  pm <user> <msg>- Private Nachricht senden")
-        print("  img <path>     - Bild an alle senden")
-        print("  refresh        - Nutzer neu suchen")
-        print("  quit           - Programm beenden")
+        print("Verfügbare Befehle (alle mit '/'): ")
+        print("  /help           - Hilfe anzeigen")
+        print("  /who            - Aktive Nutzer anzeigen")
+        print("  /msg <text>     - Nachricht an alle senden")
+        print("  /pm <user> <msg>- Private Nachricht senden")
+        print("  /img <path>     - Bild an alle senden")
+        print("  /refresh        - Nutzer neu suchen")
+        print("  /quit           - Programm beenden")
         print("-" * 50)
         
     def command_loop(self):
         """Haupt-Befehlsschleife"""
         while self.running:
             try:
-                # Befehl eingeben
-                command = input("> ").strip()
-                
-                if not command:
+                # Eingabe abholen
+                user_input = input("> ").strip()
+                if not user_input:
                     continue
-                    
-                # Befehl verarbeiten
+
+                # Eingabe muss mit '/' beginnen
+                if not user_input.startswith("/"):
+                    print("⚠️  Ungültiger Befehl. Befehle müssen mit '/' beginnen (z.B. /msg Hallo)")
+                    continue
+
+                # Slash entfernen und verarbeiten
+                command = user_input[1:]
                 self.process_command(command)
                 
             except KeyboardInterrupt:
@@ -82,37 +87,37 @@ class CLI:
                 message = ' '.join(parts[1:])
                 self.send_broadcast_message(message)
             else:
-                print("Verwendung: msg <nachricht>")
+                print("Verwendung: /msg <nachricht>")
         elif cmd == 'pm':
             if len(parts) >= 3:
                 username = parts[1]
                 message = ' '.join(parts[2:])
                 self.send_private_message(username, message)
             else:
-                print("Verwendung: pm <nutzer> <nachricht>")
+                print("Verwendung: /pm <nutzer> <nachricht>")
         elif cmd == 'img':
             if len(parts) >= 2:
                 image_path = parts[1]
                 self.send_image_broadcast(image_path)
             else:
-                print("Verwendung: img <pfad>")
+                print("Verwendung: /img <pfad>")
         elif cmd == 'refresh':
             self.refresh_users()
         elif cmd == 'quit' or cmd == 'exit':
             self.running = False
         else:
-            print(f"Unbekannter Befehl: {cmd}. 'help' für Hilfe.")
+            print(f"Unbekannter Befehl: {cmd}. /help für Hilfe.")
     
     def show_help(self):
         """Hilfenachricht anzeigen"""
         print("Verfügbare Befehle:")
-        print("  help           - Diese Hilfe anzeigen")
-        print("  who            - Aktive Nutzer anzeigen")
-        print("  msg <text>     - Nachricht an alle senden")
-        print("  pm <user> <msg>- Private Nachricht senden")
-        print("  img <path>     - Bild an alle senden")
-        print("  refresh        - Nutzer neu suchen")
-        print("  quit           - Programm beenden")
+        print("  /help           - Diese Hilfe anzeigen")
+        print("  /who            - Aktive Nutzer anzeigen")
+        print("  /msg <text>     - Nachricht an alle senden")
+        print("  /pm <user> <msg>- Private Nachricht senden")
+        print("  /img <path>     - Bild an alle senden")
+        print("  /refresh        - Nutzer neu suchen")
+        print("  /quit           - Programm beenden")
     
     def show_active_users(self):
         """Aktive Nutzer anzeigen"""
@@ -210,7 +215,6 @@ class CLI:
         elif msg_type == 'image':
             filename = message.get('filename', 'image')
             print(f"\n[{time_str}] {sender} hat ein Bild gesendet: {filename}")
-            # Bild optional speichern
             image_data = message.get('image_data', '')
             if image_data:
                 self.save_received_image(image_data, filename, sender)
@@ -218,7 +222,7 @@ class CLI:
             content = message.get('content', '')
             print(f"\n[{time_str}] System: {content}")
             
-        print("> ", end="", flush=True)  # Prompt wieder anzeigen
+        print("> ", end="", flush=True)
         
     def save_received_image(self, image_data: str, filename: str, sender: str):
         """Empfangenes Bild speichern"""
@@ -226,10 +230,8 @@ class CLI:
             import base64
             image_bytes = base64.b64decode(image_data)
             safe_filename = f"{sender}_{filename}"
-            
             with open(safe_filename, 'wb') as f:
                 f.write(image_bytes)
-                
             print(f"Bild gespeichert als: {safe_filename}")
         except Exception as e:
             print(f"Fehler beim Speichern des Bildes: {e}")
