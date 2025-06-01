@@ -74,12 +74,19 @@ class DiscoveryService:
                         tcp_port = message.get('tcp_port', 0)
                         timestamp = message.get('timestamp', time.time())
 
-                        # Nutzer zur Liste hinzufügen
+                        # Nutzer zur Liste hinzufügen / aktualisieren
                         self.ipc_handler.update_user_list(username, addr[0], tcp_port, timestamp)
 
-                        # Wenn WHO-Request empfangen wurde, antworte
+                        # WHO-Request: antworte direkt
                         if message.get('action') == 'request':
                             self.send_discovery_response(addr[0])
+
+                    # Optional: Nutzer, der 'quit' gesendet hat
+                    if message.get('type') == 'system' and 'verlassen' in message.get('content', ''):
+                        quit_user = message.get('sender')
+                        if quit_user and quit_user != self.username:
+                            print(f"⚠️  Nutzer '{quit_user}' hat den Chat verlassen – wird entfernt.")
+                            self.ipc_handler.remove_user_by_name(quit_user)
 
                 except socket.timeout:
                     continue
@@ -135,7 +142,7 @@ class DiscoveryService:
             print(f"Discovery Response Error: {e}")
 
     def request_discovery(self):
-        """Aktive Discovery-Anfrage senden"""
+        """Aktive Discovery-Anfrage senden (für /refresh oder /who)"""
         try:
             request_msg = {
                 'type': 'discovery',

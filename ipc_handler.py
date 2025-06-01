@@ -77,6 +77,10 @@ class IPCHandler:
             if username in self.active_users:
                 del self.active_users[username]
 
+    def remove_user_by_name(self, username: str):
+        """Alias für remove_user, für Kompatibilität im Servercode"""
+        self.remove_user(username)
+
     def cleanup_inactive_users(self, timeout=60):
         """Inaktive Nutzer nach Timeout entfernen"""
         current_time = time.time()

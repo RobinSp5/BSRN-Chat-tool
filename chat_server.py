@@ -32,7 +32,7 @@ class ChatServer:
         try:
             configured_port = self.config['network'].get('chat_port', 0)
 
-            # Wenn Port 0 oder belegt → freien Port nehmen
+            # Wenn Port 0 oder belegt → freien Port wählen
             try:
                 self.server_socket.bind(('', configured_port))
             except OSError:
@@ -123,6 +123,12 @@ class ChatServer:
                 self.ipc_handler.send_message(display_msg)
 
             elif msg_type == 'system':
+                content = message.get('content', '').lower()
+
+                # Prüfen ob es eine Verabschiedung ist → dann sofort entfernen
+                if "hat den chat verlassen" in content:
+                    self.ipc_handler.remove_user_by_name(sender)
+
                 display_msg = {
                     'type': 'system',
                     'sender': 'System',
