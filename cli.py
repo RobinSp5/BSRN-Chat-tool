@@ -1,7 +1,6 @@
-"""
-Command Line Interface für das Chat-Programm
-Verarbeitet Nutzerbefehle und zeigt Nachrichten an
-"""
+# Command Line Interface für das Chat-Programm
+# Verarbeitet Nutzerbefehle und zeigt Nachrichten an
+
 
 import threading
 import time
@@ -77,7 +76,7 @@ class CLI:
         if cmd == 'help':
             self.show_help()
         elif cmd == 'who':
-            self.show_active_users()
+            self.who_with_discovery()
         elif cmd == 'msg':
             if len(parts) >= 2:
                 message = ' '.join(parts[1:])
@@ -103,6 +102,13 @@ class CLI:
             self.running = False
         else:
             print(f"Unbekannter Befehl: {cmd}. /help für Hilfe.")
+
+    def who_with_discovery(self):
+        """Discovery anstoßen, dann aktive Nutzer anzeigen"""
+        print("📡 Suche nach aktiven Nutzern...")
+        self.discovery_service.request_discovery()
+        time.sleep(2)
+        self.show_active_users()
 
     def show_help(self):
         """Hilfetext anzeigen"""
