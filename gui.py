@@ -137,14 +137,11 @@ class ChatGUI(tk.Tk):
             messagebox.showwarning("Warnung", "Keine aktiven Nutzer gefunden!")
             return
             
-        # User-Auswahl Dialog
-        user_names = list(users.keys())
-        selected_user = simpledialog.askstring("Direct Message", 
-            f"An welchen User senden?\nVerfügbare User: {', '.join(user_names)}")
+        # User-Auswahl mit Listbox-Dialog
+        selected_user = self._show_user_selection_dialog(list(users.keys()))
         
         if not selected_user or selected_user not in users:
-            messagebox.showwarning("Warnung", "Ungültiger User ausgewählt!")
-            return
+            return  # User hat abgebrochen oder ungültigen User ausgewählt
             
         # Direct Message senden
         success = self.chat_client.send_to_user(selected_user, users, text, msg_type='text')
@@ -155,6 +152,60 @@ class ChatGUI(tk.Tk):
             messagebox.showerror("Fehler", f"Fehler beim Senden an {selected_user}!")
             
         self.entry.delete(0, tk.END)
+
+    def _show_user_selection_dialog(self, user_names):
+        """Zeigt einen Dialog mit Listbox zur User-Auswahl"""
+        dialog = tk.Toplevel(self)
+        dialog.title("User auswählen")
+        dialog.geometry("300x200")
+        dialog.transient(self)
+        dialog.grab_set()
+        
+        # Zentrieren des Dialogs
+        dialog.geometry("+%d+%d" % (self.winfo_rootx() + 50, self.winfo_rooty() + 50))
+        
+        selected_user = None
+        
+        tk.Label(dialog, text="Wähle einen User für die Direct Message:").pack(pady=10)
+        
+        # Listbox mit Usern
+        listbox_frame = tk.Frame(dialog)
+        listbox_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+        
+        listbox = tk.Listbox(listbox_frame)
+        scrollbar = tk.Scrollbar(listbox_frame, orient=tk.VERTICAL, command=listbox.yview)
+        listbox.configure(yscrollcommand=scrollbar.set)
+        
+        for user in user_names:
+            listbox.insert(tk.END, user)
+        
+        listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Buttons
+        button_frame = tk.Frame(dialog)
+        button_frame.pack(pady=10)
+        
+        def on_select():
+            nonlocal selected_user
+            selection = listbox.curselection()
+            if selection:
+                selected_user = user_names[selection[0]]
+                dialog.destroy()
+        
+        def on_cancel():
+            dialog.destroy()
+        
+        # Doppelklick auf Listbox
+        listbox.bind('<Double-Button-1>', lambda e: on_select())
+        
+        tk.Button(button_frame, text="Auswählen", command=on_select).pack(side=tk.LEFT, padx=5)
+        tk.Button(button_frame, text="Abbrechen", command=on_cancel).pack(side=tk.LEFT, padx=5)
+        
+        # Warten bis Dialog geschlossen wird
+        dialog.wait_window()
+        
+        return selected_user
 
     def _poll_messages(self):
         msg = self.ipc.get_message(timeout=0)
