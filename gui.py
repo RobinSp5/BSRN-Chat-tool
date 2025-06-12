@@ -72,7 +72,7 @@ class ChatGUI(tk.Tk):
 
         # Poll for new messages and user list
         self.after(100, self._poll_messages)
-        self.after(5000, self._update_user_list)
+        self.after(3000, self._update_user_list)  # Geändert von 5000 auf 3000 (3 Sekunden)
 
     def _build_menu(self):
         menubar = tk.Menu(self)
@@ -118,10 +118,43 @@ class ChatGUI(tk.Tk):
         self.entry.bind('<Return>', lambda e: self.send_text())
         send_btn = tk.Button(entry_frame, text="Senden", command=self.send_text)
         send_btn.pack(side=tk.LEFT)
+        dm_btn = tk.Button(entry_frame, text="Direct Message", command=self.send_direct_message)
+        dm_btn.pack(side=tk.LEFT, padx=(5,0))
         img_btn = tk.Button(entry_frame, text="Bild senden", command=self.send_image)
         img_btn.pack(side=tk.LEFT, padx=(5,0))
         refresh_btn = tk.Button(entry_frame, text="Aktualisieren", command=self._update_user_list)
         refresh_btn.pack(side=tk.LEFT, padx=(5,0))
+
+    def send_direct_message(self):
+        """Sendet eine Direct Message an einen ausgewählten User"""
+        text = self.entry.get().strip()
+        if not text:
+            messagebox.showwarning("Warnung", "Bitte gib eine Nachricht ein!")
+            return
+            
+        users = self.ipc.get_active_users()
+        if not users:
+            messagebox.showwarning("Warnung", "Keine aktiven Nutzer gefunden!")
+            return
+            
+        # User-Auswahl Dialog
+        user_names = list(users.keys())
+        selected_user = simpledialog.askstring("Direct Message", 
+            f"An welchen User senden?\nVerfügbare User: {', '.join(user_names)}")
+        
+        if not selected_user or selected_user not in users:
+            messagebox.showwarning("Warnung", "Ungültiger User ausgewählt!")
+            return
+            
+        # Direct Message senden
+        success = self.chat_client.send_to_user(selected_user, users, text, msg_type='text')
+        if success:
+            self._display_message({'type':'text','sender':f'Du → {selected_user}','content':text,'timestamp':time.time()})
+            messagebox.showinfo("Erfolg", f"Direct Message an {selected_user} gesendet!")
+        else:
+            messagebox.showerror("Fehler", f"Fehler beim Senden an {selected_user}!")
+            
+        self.entry.delete(0, tk.END)
 
     def _poll_messages(self):
         msg = self.ipc.get_message(timeout=0)
@@ -139,6 +172,9 @@ class ChatGUI(tk.Tk):
             port = info.get('tcp_port')
             last = time.strftime('%H:%M:%S', time.localtime(info.get('last_seen', time.time())))
             self.user_listbox.insert(tk.END, f"{username} @ {ip}:{port} (zuletzt {last})")
+        
+        # Automatisch alle 3 Sekunden wiederholen
+        self.after(3000, self._update_user_list)
 
     def _display_message(self, message):
         t = time.strftime('%H:%M:%S', time.localtime(message.get('timestamp', time.time())))
