@@ -174,10 +174,12 @@ class ChatGUI(tk.Tk):
             idx = sel[0]
             key = list(users.keys())[idx]
             success = self.chat_client.send_to_user(key, users, text, msg_type='text')
-            if success:
-                self._display_message({'type':'text','sender':f'Du → {key}','content':text,'timestamp':time.time()})
+            # Zeige eigene Nachricht im Chatverlauf
+            self._display_message({'type':'text','sender':f'Du → {key}','content':text,'timestamp':time.time()})
         else:
             successful, total = self.chat_client.broadcast_message(users, text, msg_type='text')
+            # Zeige eigene Nachricht im Chatverlauf
+            self._display_message({'type':'text','sender':'Du','content':text,'timestamp':time.time()})
             self._display_message({'type':'system','sender':'System', 'content':f'Nachricht an {successful} von {total} Nutzern gesendet.', 'timestamp':time.time()})
         self.entry.delete(0, tk.END)
 
