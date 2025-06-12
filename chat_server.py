@@ -43,14 +43,14 @@ class ChatServer:
             self.config['network']['chat_port'] = configured_port
             self.server_socket.listen(5)
 
-            print(f"✅ Chat Server läuft auf Port {configured_port}")
+            print(f"Chat Server läuft auf Port {configured_port}")
 
             server_thread = threading.Thread(target=self.accept_connections)
             server_thread.daemon = True
             server_thread.start()
 
         except Exception as e:
-            print(f"❌ Server Start Error: {e}")
+            print(f"Server Start Error: {e}")
             self.running = False
 
     def stop(self):
