@@ -21,7 +21,7 @@ class ChatGUI(tk.Tk):
         # Menü leiste
         self._build_menu()
 
-        # Load configuration
+        # Konfigurationsdatei laden
         try:
             self.config = toml.load(config_path)
         except Exception as e:
@@ -29,7 +29,7 @@ class ChatGUI(tk.Tk):
             self.destroy()
             return
 
-        # Username
+        # Nutzername abfrage zu Beginn des Programms
         self.username = username or simpledialog.askstring("Username", "Gib deinen Nutzernamen ein:")
         if not self.username:
             self.username = self.config['user']['default_username']
@@ -48,7 +48,7 @@ class ChatGUI(tk.Tk):
         # Build UI
         self._build_widgets()
 
-        # Welcome message
+        # Willkommensnachricht zu Beginn
         self.msg_display.configure(state='normal')
         self.msg_display.insert(tk.END, f"Willkommen {self.username}!\n")
         self.msg_display.insert(tk.END, "Verwende 'Hilfe' im Menü für verfügbare Befehle.\n\n")
@@ -58,6 +58,7 @@ class ChatGUI(tk.Tk):
         self.after(100, self._poll_messages)
         self.after(3000, self._update_user_list)  # Geändert von 5000 auf 3000 (3 Sekunden)
 
+    # Erstellt die Menüleiste mit Datei- und Hilfemenü
     def _build_menu(self):
         menubar = tk.Menu(self)
         filemenu = tk.Menu(menubar, tearoff=0)
@@ -70,6 +71,7 @@ class ChatGUI(tk.Tk):
 
         self.config(menu=menubar)
 
+    # Zeigt eine Hilfemeldung mit verfügbaren Befehlen
     def show_help(self):
         help_text = (
             "Verfügbare Befehle:\n"
@@ -82,6 +84,7 @@ class ChatGUI(tk.Tk):
         )
         messagebox.showinfo("Hilfe", help_text)
 
+    # Erstellt die GUI-Widgets
     def _build_widgets(self):
         user_frame = tk.Frame(self)
         user_frame.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
@@ -109,6 +112,7 @@ class ChatGUI(tk.Tk):
         refresh_btn = tk.Button(entry_frame, text="Aktualisieren", command=self._update_user_list)
         refresh_btn.pack(side=tk.LEFT, padx=(5,0))
 
+    # Sendet eine Direkt Nachricht an einen ausgewählten User
     def send_direct_message(self):
         """Sendet eine Direct Message an einen ausgewählten User"""
         text = self.entry.get().strip()
@@ -137,6 +141,7 @@ class ChatGUI(tk.Tk):
             
         self.entry.delete(0, tk.END)
 
+    # Zeigt einen Dialog zur Auswahl eines Users für Direct Messages
     def _show_user_selection_dialog(self, user_names):
         """Zeigt einen Dialog mit Listbox zur User-Auswahl"""
         dialog = tk.Toplevel(self)
@@ -191,6 +196,7 @@ class ChatGUI(tk.Tk):
         
         return selected_user
 
+    #Fragt regelmäßig über IPCHandler.get_message() neue eingehende Nachrichten ab und zeigt sie über _display_message() an.
     def _poll_messages(self):
         msg = self.ipc.get_message(timeout=0)
         while msg:
@@ -198,6 +204,7 @@ class ChatGUI(tk.Tk):
             msg = self.ipc.get_message(timeout=0)
         self.after(100, self._poll_messages)
 
+    # Aktualisiert die Liste der aktiven Nutzer alle 3 Sekunden
     def _update_user_list(self):
         self.discovery.request_discovery()
         users = self.ipc.get_active_users()
@@ -211,6 +218,8 @@ class ChatGUI(tk.Tk):
         # Automatisch alle 3 Sekunden wiederholen
         self.after(3000, self._update_user_list)
 
+    # Zeigt eine Nachricht im Chatverlauf an
+    # Unterscheidet zwischen Text, Bild und Systemnachrichten
     def _display_message(self, message):
         t = time.strftime('%H:%M:%S', time.localtime(message.get('timestamp', time.time())))
         sender = message.get('sender', 'Unknown')
@@ -235,6 +244,8 @@ class ChatGUI(tk.Tk):
         self.msg_display.see(tk.END)
         self.msg_display.configure(state='disabled')
 
+    # Sendet eine Textnachricht an den ausgewählten Nutzer oder an alle
+    # und zeigt die eigene Nachricht im Chatverlauf an.
     def send_text(self):
         text = self.entry.get().strip()
         if not text:
@@ -254,6 +265,9 @@ class ChatGUI(tk.Tk):
             self._display_message({'type':'system','sender':'System', 'content':f'Nachricht an {successful} von {total} Nutzern gesendet.', 'timestamp':time.time()})
         self.entry.delete(0, tk.END)
 
+    # Sendet ein Bild an den ausgewählten Nutzer oder an alle
+    # und zeigt eine Bestätigung im Chatverlauf an.
+    # Das Bild wird über einen Dateiauswahldialog ausgewählt.
     def send_image(self):
         path = filedialog.askopenfilename(title="Bild auswählen", filetypes=[("Bilddateien", "*.png;*.jpg;*.jpeg;*.gif")])
         if not path or not os.path.exists(path):
@@ -284,6 +298,7 @@ class ChatGUI(tk.Tk):
         self.discovery.stop()
         self.destroy()
 
+# Hauptprogrammstart
 if __name__ == '__main__':
     app = ChatGUI()
     app.mainloop()
