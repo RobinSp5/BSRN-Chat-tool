@@ -11,10 +11,12 @@ import os
 from typing import Dict, Any
 
 class ChatClient:
+    # Initialisiert den ChatClient mit Konfiguration und Benutzernamen aus config.toml
     def __init__(self, config: Dict[str, Any], username: str):
         self.config = config
         self.username = username
 
+    # Sendet eine Textnachricht an einen bestimmten Nutzer über TCP
     def send_text_message(self, target_ip: str, target_port: int, message: str) -> bool:
         """Text-Nachricht senden"""
         try:
@@ -29,6 +31,7 @@ class ChatClient:
             print(f"Text Message Error: {e}")
             return False
 
+    # Sendet eine Bildnachricht an einen bestimmten Nutzer über TCP
     def send_image_message(self, target_ip: str, target_port: int, image_path: str) -> bool:
         """Bild-Nachricht senden"""
         try:
@@ -59,6 +62,7 @@ class ChatClient:
             print(f"Image Message Error: {e}")
             return False
 
+    # Sendet eine Systemnachricht an einen bestimmten Nutzer über TCP
     def send_system_message(self, target_ip: str, target_port: int, message: str) -> bool:
         """Systemnachricht senden (z. B. Beenden)"""
         try:
@@ -73,6 +77,7 @@ class ChatClient:
             print(f"System Message Error: {e}")
             return False
 
+    # Sendet eine generische Nachricht über TCP
     def send_message(self, target_ip: str, target_port: int, message_data: Dict[str, Any]) -> bool:
         """TCP-Nachricht senden an IP + Port"""
         client_socket = None
@@ -92,6 +97,8 @@ class ChatClient:
             if client_socket:
                 client_socket.close()
 
+    # Sendet eine Nachricht an alle aktiven Nutzer
+    # und gibt die Anzahl der erfolgreichen Sendungen zurück
     def broadcast_message(self, active_users: Dict[str, Any], message: str, msg_type: str = 'text'):
         """Nachricht an alle aktiven Nutzer senden"""
         successful_sends = 0
@@ -116,6 +123,7 @@ class ChatClient:
 
         return successful_sends, total_users
 
+    # Sendet eine Nachricht an einen bestimmten Nutzer
     def send_to_user(self, username: str, active_users: Dict[str, Any],
                      message: str, msg_type: str = 'text') -> bool:
         """Nachricht an bestimmten Nutzer senden"""

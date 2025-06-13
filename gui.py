@@ -24,26 +24,10 @@ class ChatGUI(tk.Tk):
         # Load configuration
         try:
             self.config = toml.load(config_path)
-        except Exception:
-            messagebox.showwarning("Config Warning", f"Fehler beim Laden der Konfiguration: {config_path}\nVerwende Standardwerte.")
-            self.config = {
-                'network': {
-                    'discovery_port': 12345,
-                    'chat_port': 0,
-                    'broadcast_address': '255.255.255.255',
-                    'discovery_interval': 5
-                },
-                'user': {
-                    'default_username': 'ChatUser',
-                    'max_message_length': 1024,
-                    'max_image_size': 1048576
-                },
-                'system': {
-                    'socket_timeout': 5,
-                    'worker_threads': 2,
-                    'log_level': 'INFO'
-                }
-            }
+        except Exception as e:
+            messagebox.showerror("Konfigurationsfehler", f"Die Konfigurationsdatei '{config_path}' konnte nicht geladen werden.\n\nFehler: {str(e)}\n\nDas Programm wird beendet.")
+            self.destroy()
+            return
 
         # Username
         self.username = username or simpledialog.askstring("Username", "Gib deinen Nutzernamen ein:")
