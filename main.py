@@ -37,7 +37,7 @@ class SimpleChatApp:
         self.chat_server.start()
 
         # TCP-Port aus laufendem Server abfragen
-        chat_port = self.config['network']['chat_port']
+        chat_port = self.config.get('network', {}).get('chat_port', 5000)
 
         # Discovery-Service mit IP + TCP-Port starten
         self.discovery_service = DiscoveryService(self.config, self.ipc_handler, self.username, chat_port)
@@ -64,27 +64,6 @@ class SimpleChatApp:
         except Exception as e:
             print(f"Fehler beim Laden der Konfiguration: {e}")
             return self.get_default_config()
-
-    def get_default_config(self) -> dict:
-        """Standard-Konfiguration"""
-        return {
-            'network': {
-                'discovery_port': 12345,
-                'chat_port': 0,  # 0 = dynamisch
-                'broadcast_address': '255.255.255.255',
-                'discovery_interval': 30
-            },
-            'user': {
-                'default_username': 'ChatUser',
-                'max_message_length': 1024,
-                'max_image_size': 1048576
-            },
-            'system': {
-                'socket_timeout': 5,
-                'worker_threads': 2,
-                'log_level': 'INFO'
-            }
-        }
 
     def start(self):
         """Hauptprogramm starten"""
@@ -156,13 +135,13 @@ def main():
     print("=" * 50)
 
     args = parse_arguments()
-    username = args.username
+    username = args.username  # <- Übergibt None, wenn kein -u/--username gesetzt
 
-    if not username:
+    if username is None:
         try:
             username = input("Nutzername eingeben: ").strip()
             if not username:
-                username = "ChatUser"
+                username = None  # bewusst None lassen, um später fallback auf config zu erlauben
         except (KeyboardInterrupt, EOFError):
             print("\nProgramm abgebrochen.")
             return
@@ -174,6 +153,7 @@ def main():
         print("\nProgramm durch Nutzer beendet.")
     except Exception as e:
         print(f"Unerwarteter Fehler: {e}")
+
 
 if __name__ == "__main__":
     main()

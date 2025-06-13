@@ -12,7 +12,7 @@ discovery_interval = 5
 
 [user]
 # Standard Nutzername (kann über CLI überschrieben werden)
-default_username = "ChatUser"
+default_username = "DefaultUser"
 # Maximale Nachrichtenlänge
 max_message_length = 1024
 # Maximale Bildgröße in Bytes (1MB)
