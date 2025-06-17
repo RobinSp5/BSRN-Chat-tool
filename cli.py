@@ -202,7 +202,7 @@ class CLI:
         for name, info in users.items():
             if self.chat_client.send_text_message(info['ip'], info['tcp_port'], name, message):
                 sent += 1
-        print(f"Nachricht gesendet an {sent}/{len(users)}")
+        print(f"Nachricht gesendet an {sent -1} /{len(users) -1}")
 
     def send_private_message(self, username: str, message: str):
         if not self.chat_client.username:
