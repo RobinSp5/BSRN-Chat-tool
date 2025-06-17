@@ -128,41 +128,42 @@ class CLI:
                 print("Aktuelle Konfiguration:")
                 for key, value in self.config.items():
                     print(f"  {key}: {value}")
-                        elif cmd == "edit_config":
-                        # Prüfen ob mindestens Schlüssel und Wert angegeben wurden
-                        if len(parts) >= 3:
-                            key = parts[1]
-                            # Hier alle weiteren Teile als einen zusammenhängenden Wert nehmen
-                            value = " ".join(parts[2:])
-                            # Verschachtelte Konfigurationsschlüssel wie "system.autoreply" behandeln
-                            if "." in key:
-                                config_section, config_key = key.split(".", 1)
-                                if config_section in self.config:
-                                    if not isinstance(self.config[config_section], dict):
-                                        self.config[config_section] = {}
-                                    self.config[config_section][config_key] = value
-                                    print(f"✅ Konfiguration aktualisiert: {key} = {value}")
-                                else:
-                                    print(f"⚠️ Konfigurationssektion '{config_section}' nicht gefunden.")
-                            else:
-                                # Einfache Schlüssel wie "name" behandeln
-                                self.config[key] = value
-                                print(f"✅ Konfiguration aktualisiert: {key} = {value}")
 
-                            # In die TOML-Datei speichern
-                            try:
-                                config_path = "config.toml"  # ggf. aus self.config holen
-                                with open(config_path, "w") as f:
-                                    toml.dump(self.config, f)
-                                print(f"💾 Konfiguration in {config_path} gespeichert.")
-                            except Exception as e:
-                                print(f"⚠️ Fehler beim Speichern der Konfiguration: {e}")
+            elif cmd == "edit_config":
+                # Prüfen ob mindestens Schlüssel und Wert angegeben wurden
+                if len(parts) >= 3:
+                    key = parts[1]
+                    # Hier alle weiteren Teile als einen zusammenhängenden Wert nehmen
+                    value = " ".join(parts[2:])
+                    # Verschachtelte Konfigurationsschlüssel wie "system.autoreply" behandeln
+                    if "." in key:
+                        config_section, config_key = key.split(".", 1)
+                        if config_section in self.config:
+                            if not isinstance(self.config[config_section], dict):
+                                self.config[config_section] = {}
+                            self.config[config_section][config_key] = value
+                            print(f"✅ Konfiguration aktualisiert: {key} = {value}")
                         else:
-                            # Usage-Hinweis
-                            print("Verwendung: /edit_config <schlüssel> <wert>")
-                            print("Beispiele:")
-                            print("  /edit_config name Alice")
-                            print("  /edit_config system.autoreply \"Bin gleich zurück\"")
+                            print(f"⚠️ Konfigurationssektion '{config_section}' nicht gefunden.")
+                    else:
+                        # Einfache Schlüssel wie "name" behandeln
+                        self.config[key] = value
+                        print(f"✅ Konfiguration aktualisiert: {key} = {value}")
+
+                    # In die TOML-Datei speichern
+                    try:
+                        config_path = "config.toml"  # ggf. aus self.config holen
+                        with open(config_path, "w") as f:
+                            toml.dump(self.config, f)
+                        print(f"💾 Konfiguration in {config_path} gespeichert.")
+                    except Exception as e:
+                        print(f"⚠️ Fehler beim Speichern der Konfiguration: {e}")
+                else:
+                    # Usage-Hinweis
+                    print("Verwendung: /edit_config <schlüssel> <wert>")
+                    print("Beispiele:")
+                    print("  /edit_config name Alice")
+                    print("  /edit_config system.autoreply \"Bin gleich zurück\"")
 
 
             else:
