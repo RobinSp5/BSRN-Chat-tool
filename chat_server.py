@@ -76,14 +76,19 @@ class ChatServer:
 
                 elif cmd == "IMG" and len(parts) == 3:
                     recipient = parts[1]
-                    size = int(parts[2])
+                    try:
+                        size = int(parts[2])
+                    except ValueError:
+                        print(f"❌ Ungültige Bildgröße: {parts[2]}")
+                        return
+
                     image_data = sockfile.read(size)
 
-                    # 🔽 Bildordner definieren
-                    folder = "/Users/arda/Documents/2 Semester/BSRN/Projekt/BSRN-Chat-tool/bilder"
+                    # Ordner aus config laden, Standard 'images' falls nicht definiert
+                    folder = self.config.get("system", {}).get("imagepath", "images")
                     os.makedirs(folder, exist_ok=True)
 
-                    # 🔽 Bildformat automatisch erkennen
+                    # Bildformat automatisch erkennen
                     ext = ".bin"
                     if image_data.startswith(b"\x89PNG\r\n\x1a\n"):
                         ext = ".png"
@@ -92,14 +97,11 @@ class ChatServer:
                     elif image_data.startswith(b"GIF87a") or image_data.startswith(b"GIF89a"):
                         ext = ".gif"
 
-                    # 🔽 Bild speichern
+                    # Bild speichern
                     filename = f"received_{int(time.time())}{ext}"
                     filepath = os.path.join(folder, filename)
                     with open(filepath, "wb") as f:
                         f.write(image_data)
-
-                    # 🔽 Optional: automatisch öffnen (nur bei macOS aktivieren)
-                    # os.system(f'open "{filepath}"')
 
                     display_msg = {
                         'type': 'image',

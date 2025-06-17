@@ -4,6 +4,7 @@ import time
 import signal
 import threading
 import os
+import socket
 
 try:
     import toml
@@ -23,6 +24,9 @@ class SimpleChatApp:
         self.config = self.load_config(config_path)
         self.username = username
 
+        # Lokale IP ermitteln und in Config speichern
+        self.config['network']['local_ip'] = self.get_local_ip()
+
         self.ipc_handler = IPCHandler()
         self.chat_server = ChatServer(self.config, self.ipc_handler)
         self.chat_server.start()
@@ -35,6 +39,17 @@ class SimpleChatApp:
 
         self.running = False
         signal.signal(signal.SIGINT, self.signal_handler)
+
+    def get_local_ip(self) -> str:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(('8.8.8.8', 80))
+            ip = s.getsockname()[0]
+        except Exception:
+            ip = '127.0.0.1'
+        finally:
+            s.close()
+        return ip
 
     def load_config(self, path: str) -> dict:
         if not os.path.exists(path):

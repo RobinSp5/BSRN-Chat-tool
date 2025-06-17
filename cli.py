@@ -4,6 +4,7 @@ import os
 import shlex
 import toml
 from typing import Dict, Any
+import socket
 
 
 class CLI:
@@ -28,22 +29,22 @@ class CLI:
         self.running = False
 
     def show_welcome(self):
-                print("=" * 50)
-                print("     Simple Local Chat (SLCP)")
-                print("=" * 50)
-                print("📢 Du bist aktuell nicht im Chat angemeldet.")
-                print("Melde dich mit /join <benutzername> an.")
-                print("Verfügbare Befehle (alle mit '/'): ")
-                print("  /help           - Hilfe anzeigen")
-                print("  /join <name>    - Chat beitreten (JOIN)")
-                print("  /who            - Nutzer suchen (WHO)")
-                print("  /msg <text>     - Nachricht an alle senden")
-                print("  /pm <user> <msg>- Private Nachricht senden")
-                print("  /img <pfad>     - Bild an alle senden")
-                print("  /show_config    - Aktuelle Konfiguration anzeigen")
-                print("  /edit_config <key> <value> - Konfiguration bearbeiten")
-                print("  /quit           - Chat verlassen")
-                print("-" * 50)
+        print("=" * 50)
+        print("     Simple Local Chat (SLCP)")
+        print("=" * 50)
+        print("📢 Du bist aktuell nicht im Chat angemeldet.")
+        print("Melde dich mit /join <benutzername> an.")
+        print("Verfügbare Befehle (alle mit '/'): ")
+        print("  /help           - Hilfe anzeigen")
+        print("  /join <name>    - Chat beitreten (JOIN)")
+        print("  /who            - Nutzer suchen (WHO)")
+        print("  /msg <text>     - Nachricht an alle senden")
+        print("  /pm <user> <msg>- Private Nachricht senden")
+        print("  /img <pfad>     - Bild an alle senden")
+        print("  /show_config    - Aktuelle Konfiguration anzeigen")
+        print("  /edit_config <key> <value> - Konfiguration bearbeiten")
+        print("  /quit           - Chat verlassen")
+        print("-" * 50)
 
     def command_loop(self):
         while self.running:
@@ -130,12 +131,9 @@ class CLI:
                     print(f"  {key}: {value}")
 
             elif cmd == "edit_config":
-                # Prüfen ob mindestens Schlüssel und Wert angegeben wurden
                 if len(parts) >= 3:
                     key = parts[1]
-                    # Hier alle weiteren Teile als einen zusammenhängenden Wert nehmen
                     value = " ".join(parts[2:])
-                    # Verschachtelte Konfigurationsschlüssel wie "system.autoreply" behandeln
                     if "." in key:
                         config_section, config_key = key.split(".", 1)
                         if config_section in self.config:
@@ -146,25 +144,21 @@ class CLI:
                         else:
                             print(f"⚠️ Konfigurationssektion '{config_section}' nicht gefunden.")
                     else:
-                        # Einfache Schlüssel wie "name" behandeln
                         self.config[key] = value
                         print(f"✅ Konfiguration aktualisiert: {key} = {value}")
 
-                    # In die TOML-Datei speichern
                     try:
-                        config_path = "config.toml"  # ggf. aus self.config holen
+                        config_path = "config.toml"
                         with open(config_path, "w") as f:
                             toml.dump(self.config, f)
                         print(f"💾 Konfiguration in {config_path} gespeichert.")
                     except Exception as e:
                         print(f"⚠️ Fehler beim Speichern der Konfiguration: {e}")
                 else:
-                    # Usage-Hinweis
                     print("Verwendung: /edit_config <schlüssel> <wert>")
                     print("Beispiele:")
                     print("  /edit_config name Alice")
                     print("  /edit_config system.autoreply \"Bin gleich zurück\"")
-
 
             else:
                 print(f"Unbekannter Befehl: {cmd}")
@@ -200,9 +194,10 @@ class CLI:
             return
         sent = 0
         for name, info in users.items():
-            if self.chat_client.send_text_message(info['ip'], info['tcp_port'], name, message):
-                sent += 1
-        print(f"Nachricht gesendet an {sent -1} /{len(users) -1}")
+            if name != self.chat_client.username:
+                if self.chat_client.send_text_message(info['ip'], info['tcp_port'], name, message):
+                    sent += 1
+        print(f"Nachricht gesendet an {sent} / {len(users) - 1 if self.chat_client.username in users else len(users)}")
 
     def send_private_message(self, username: str, message: str):
         if not self.chat_client.username:
@@ -232,9 +227,10 @@ class CLI:
             return
         sent = 0
         for name, info in users.items():
-            if self.chat_client.send_image_message(info['ip'], info['tcp_port'], name, image_path):
-                sent += 1
-        print(f"Bild gesendet an {sent}/{len(users)}")
+            if name != self.chat_client.username:
+                if self.chat_client.send_image_message(info['ip'], info['tcp_port'], name, image_path):
+                    sent += 1
+        print(f"Bild gesendet an {sent}/{len(users) - 1 if self.chat_client.username in users else len(users)}")
 
     def display_messages(self):
         while self.running:
@@ -250,20 +246,31 @@ class CLI:
         time_str = time.strftime('%H:%M:%S', time.localtime(timestamp))
 
         if msg_type == 'text':
-            print(f"\n[{time_str}] Nachricht von {sender_ip}: {message.get('content')}")
-            if self.autoreply_active:
-                sender_name = None
-                users = self.ipc_handler.get_active_users(only_visible=False)
-                for name, info in users.items():
-                    if info["ip"] == sender_ip:
-                        sender_name = name
-                        break
-                if sender_name:
-                    reply = self.config["system"].get("autoreply", "Ich bin gerade nicht verfügbar.")
-                    self.chat_client.send_text_message(sender_ip, info["tcp_port"], sender_name, reply)
+            sender_name = None
+            users = self.ipc_handler.get_active_users(only_visible=False)
+            for name, info in users.items():
+                if info["ip"] == sender_ip:
+                    sender_name = name
+                    break
+
+            # Eigene IP aus Config oder leeren String holen
+            local_ip = self.chat_client.config['network'].get('local_ip', '')
+
+            # Falls Absender IP die eigene IP ist, Namen setzen:
+            if sender_ip == local_ip and sender_name is None:
+                sender_name = self.chat_client.username
+
+            display_name = sender_name if sender_name else sender_ip
+
+            print(f"\n[{time_str}] Nachricht von {display_name}: {message.get('content')}")
+
+            if self.autoreply_active and sender_name:
+                reply = self.config["system"].get("autoreply", "Ich bin gerade nicht verfügbar.")
+                self.chat_client.send_text_message(sender_ip, info["tcp_port"], sender_name, reply)
 
         elif msg_type == 'image':
             print(f"\n[{time_str}] Bild empfangen von {sender_ip}: {message.get('filename')}")
         elif msg_type == 'system':
             print(f"\n[{time_str}] SYSTEM: {message.get('content')}")
         print("> ", end="", flush=True)
+
