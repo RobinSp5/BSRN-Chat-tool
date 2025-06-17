@@ -58,7 +58,7 @@ class CLI:
                 if not user_input:
                     continue
                 if not user_input.startswith("/"):
-                    print("⚠️  Befehle müssen mit '/' beginnen.")
+                    print("Befehle müssen mit '/' beginnen.")
                     continue
                 self.process_command(user_input[1:])
             except (KeyboardInterrupt, EOFError):
@@ -90,12 +90,12 @@ class CLI:
                     return
                 name = parts[1].strip()
                 if not name:
-                    print("⚠️ Name darf nicht leer sein.")
+                    print("Name darf nicht leer sein.")
                     return
                 self.chat_client.username = name
                 self.discovery_service.username = name
                 self.discovery_service.send_join()
-                print(f"✅ Du hast dich erfolgreich als \"{name}\" im Chat angemeldet.")
+                print(f"Du hast dich erfolgreich als \"{name}\" im Chat angemeldet.")
 
             elif cmd == "who":
                 self.discovery_service.request_discovery()
@@ -140,20 +140,20 @@ class CLI:
                             if not isinstance(self.config[config_section], dict):
                                 self.config[config_section] = {}
                             self.config[config_section][config_key] = value
-                            print(f"✅ Konfiguration aktualisiert: {key} = {value}")
+                            print(f"Konfiguration aktualisiert: {key} = {value}")
                         else:
                             print(f"⚠️ Konfigurationssektion '{config_section}' nicht gefunden.")
                     else:
                         self.config[key] = value
-                        print(f"✅ Konfiguration aktualisiert: {key} = {value}")
+                        print(f"Konfiguration aktualisiert: {key} = {value}")
 
                     try:
                         config_path = "config.toml"
                         with open(config_path, "w") as f:
                             toml.dump(self.config, f)
-                        print(f"💾 Konfiguration in {config_path} gespeichert.")
+                        print(f"Konfiguration in {config_path} gespeichert.")
                     except Exception as e:
-                        print(f"⚠️ Fehler beim Speichern der Konfiguration: {e}")
+                        print(f"Fehler beim Speichern der Konfiguration: {e}")
                 else:
                     print("Verwendung: /edit_config <schlüssel> <wert>")
                     print("Beispiele:")
@@ -164,7 +164,7 @@ class CLI:
                 print(f"Unbekannter Befehl: {cmd}")
 
         except Exception as e:
-            print(f"⚠️ Fehler beim Verarbeiten des Befehls: {e}")
+            print(f"Fehler beim Verarbeiten des Befehls: {e}")
 
     def show_help(self):
         print("Verfügbare Befehle:")
@@ -186,11 +186,11 @@ class CLI:
 
     def send_broadcast_message(self, message: str):
         if not self.chat_client.username:
-            print("⚠️ Bitte zuerst mit /join <name> beitreten.")
+            print("Bitte zuerst mit /join <name> beitreten.")
             return
         users = self.ipc_handler.get_active_users()
         if not users:
-            print("❌ Keine Nutzer zum Senden.")
+            print("Keine Nutzer zum Senden.")
             return
         sent = 0
         for name, info in users.items():
@@ -201,7 +201,7 @@ class CLI:
 
     def send_private_message(self, username: str, message: str):
         if not self.chat_client.username:
-            print("⚠️ Bitte zuerst mit /join <name> beitreten.")
+            print("Bitte zuerst mit /join <name> beitreten.")
             return
         users = self.ipc_handler.get_active_users()
         user = users.get(username)
@@ -212,18 +212,18 @@ class CLI:
         if success:
             print(f"[Du → {username}]: {message}")
         else:
-            print(f"❌ Senden fehlgeschlagen an {username}.")
+            print(f"Senden fehlgeschlagen an {username}.")
 
     def send_image_broadcast(self, image_path: str):
         if not self.chat_client.username:
-            print("⚠️ Bitte zuerst mit /join <name> beitreten.")
+            print("Bitte zuerst mit /join <name> beitreten.")
             return
         if not os.path.isfile(image_path):
-            print(f"❌ Bild nicht gefunden: {image_path}")
+            print(f"Bild nicht gefunden: {image_path}")
             return
         users = self.ipc_handler.get_active_users()
         if not users:
-            print("❌ Keine Nutzer bekannt.")
+            print("Keine Nutzer bekannt.")
             return
         sent = 0
         for name, info in users.items():

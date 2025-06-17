@@ -53,13 +53,13 @@ class SimpleChatApp:
 
     def load_config(self, path: str) -> dict:
         if not os.path.exists(path):
-            print(f"⚠️ config.toml nicht gefunden unter {path}.")
+            print(f"config.toml nicht gefunden unter {path}.")
             sys.exit(1)
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 return toml.load(f)
         except Exception as e:
-            print(f"❌ Fehler beim Laden von config.toml: {e}")
+            print(f"Fehler beim Laden von config.toml: {e}")
             sys.exit(1)
 
     def start(self):
