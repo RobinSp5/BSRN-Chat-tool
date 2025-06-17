@@ -6,6 +6,10 @@ from typing import Dict, Any
 
 class DiscoveryService:
     def __init__(self, config: Dict[str, Any], ipc_handler, username: str, chat_tcp_port: int):
+        print(f"[Discovery] Initialisiere DiscoveryService mit:")
+        print(f"            • Chat-Port (TCP): {chat_tcp_port}")
+        print(f"            • Broadcast-Adresse: {config['network'].get('broadcast_address', '255.255.255.255')}")
+        print(f"            • Discovery-Port (UDP): {config['network'].get('whoisport', 4000)}")
         self.config = config
         self.ipc_handler = ipc_handler
         self.username = username
@@ -15,7 +19,6 @@ class DiscoveryService:
         self.broadcast_ip = self.config["network"].get("broadcast_address", "255.255.255.255")
         self.discovery_port = self.config["network"].get("whoisport", 4000)
 
-        # UDP-Socket für Broadcasts
         self.listen_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
@@ -25,16 +28,18 @@ class DiscoveryService:
         self.listen_socket.settimeout(1)
 
     def start(self):
+        print("[Discovery] Starte Discovery-Service...")
         self.running = True
         try:
             self.listen_socket.bind(('', self.discovery_port))
             threading.Thread(target=self.listen_loop, daemon=True).start()
-            print(f"[Discovery] ✅ UDP-Listener aktiv (Port {self.discovery_port}).")
+           
         except OSError:
-            print(f"[Discovery] ⚠️ Port {self.discovery_port} belegt – kein Listener aktiv.")
+            print(f"[Discovery] ❌ Fehler: Port {self.discovery_port} bereits belegt oder nicht verfügbar.")
         self.send_join()
 
     def stop(self):
+        print("[Discovery] ⛔ Beende Discovery-Service und schließe Socket...")
         self.running = False
         self.send_leave()
         try:
@@ -93,9 +98,8 @@ class DiscoveryService:
         self.send_udp_broadcast(f"LEAVE {self.username}")
 
     def request_discovery(self):
-        # Sende zuerst JOIN, damit alle dich kennen, dann WHO
         self.send_join()
-        time.sleep(0.1)  # kleine Verzögerung, damit JOIN verarbeitet wird
+        time.sleep(0.1)
         self.send_udp_broadcast("WHO")
 
     def send_knowusers(self, target_ip: str):
@@ -120,3 +124,25 @@ class DiscoveryService:
                 sock.sendall(msg.encode('utf-8'))
         except Exception as e:
             print(f"[Discovery] Fehler beim Senden von KNOWUSERS an {target_ip}:{target_port}: {e}")
+
+if __name__ == "__main__":
+    class DummyIPC:
+        def update_user_list(self, name, ip, port, _): print(f"{name} gefunden @ {ip}:{port}")
+        def remove_user_by_name(self, name): print(f"{name} entfernt")
+        def get_active_users(self, only_visible=True): return {}
+
+    config = {
+        "network": {"broadcast_address": "255.255.255.255", "whoisport": 4000},
+        "system": {"socket_timeout": 2}
+    }
+
+    d = DiscoveryService(config, DummyIPC(), "TestUser", 5001)
+    d.start()
+
+    try:
+        while (cmd := input("> ").strip()) != "exit":
+            if cmd == "who": d.request_discovery()
+    except KeyboardInterrupt:
+        pass
+
+    d.stop()
