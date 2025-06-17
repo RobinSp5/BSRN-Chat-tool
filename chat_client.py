@@ -9,11 +9,17 @@ class ChatClient:
         self.username = username
 
     def send_text_message(self, target_ip: str, target_port: int, target_handle: str, message: str) -> bool:
-        """Sendet eine SLCP-Textnachricht über TCP"""
+        """Sendet eine SLCP-Textnachricht über TCP (max. 512 Bytes inklusive Header)"""
         try:
             slcp_line = f"MSG {target_handle} {message}\n"
+            encoded = slcp_line.encode("utf-8")
+
+            if len(encoded) > 512:
+                print(f"❌ Nachricht zu lang ({len(encoded)} Bytes). Maximal erlaubt: 512 Bytes.")
+                return False
+
             with socket.create_connection((target_ip, target_port), timeout=self.config['system']['socket_timeout']) as sock:
-                sock.sendall(slcp_line.encode("utf-8"))
+                sock.sendall(encoded)
             return True
         except Exception as e:
             print(f"Text Message Error: {e}")
