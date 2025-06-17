@@ -35,11 +35,11 @@ class DiscoveryService:
             threading.Thread(target=self.listen_loop, daemon=True).start()
            
         except OSError:
-            print(f"[Discovery] ❌ Fehler: Port {self.discovery_port} bereits belegt oder nicht verfügbar.")
+            print(f"[Discovery] Fehler: Port {self.discovery_port} bereits belegt oder nicht verfügbar.")
         self.send_join()
 
     def stop(self):
-        print("[Discovery] ⛔ Beende Discovery-Service und schließe Socket...")
+        print("[Discovery] Beende Discovery-Service und schließe Socket...")
         self.running = False
         self.send_leave()
         try:
