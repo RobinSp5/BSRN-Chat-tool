@@ -1,162 +1,122 @@
-"""
-Discovery Service für automatische Nutzererkennung im LAN
-Verwendet UDP Broadcast für Peer-Discovery
-"""
-
 import socket
 import threading
 import time
-import json
 from typing import Dict, Any
 
+
 class DiscoveryService:
-    def __init__(self, config: Dict[str, Any], ipc_handler, username: str, tcp_port: int):
+    def __init__(self, config: Dict[str, Any], ipc_handler, username: str, chat_tcp_port: int):
         self.config = config
         self.ipc_handler = ipc_handler
         self.username = username
-        self.tcp_port = tcp_port  # Eigener TCP-Port für eingehende Verbindungen
+        self.chat_tcp_port = chat_tcp_port
         self.running = False
 
-        # UDP Socket für Discovery
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        self.sock.settimeout(1)
+        self.broadcast_ip = self.config["network"].get("broadcast_address", "255.255.255.255")
+        self.discovery_port = self.config["network"].get("whoisport", 4000)
 
-        # Eigene IP-Adresse ermitteln
-        self.local_ip = self.get_local_ip()
-
-    def get_local_ip(self):
-        """Lokale IP-Adresse ermitteln"""
+        # UDP-Socket für Broadcasts
+        self.listen_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-                s.connect(("8.8.8.8", 80))
-                return s.getsockname()[0]
-        except:
-            return "127.0.0.1"
+            self.listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        except (AttributeError, OSError):
+            pass
+        self.listen_socket.settimeout(1)
 
     def start(self):
-        """Discovery Service starten"""
         self.running = True
-
-        listener_thread = threading.Thread(target=self.listen_for_discoveries)
-        listener_thread.daemon = True
-        listener_thread.start()
-
-        broadcast_thread = threading.Thread(target=self.broadcast_presence)
-        broadcast_thread.daemon = True
-        broadcast_thread.start()
+        try:
+            self.listen_socket.bind(('', self.discovery_port))
+            threading.Thread(target=self.listen_loop, daemon=True).start()
+            print(f"[Discovery] ✅ UDP-Listener aktiv (Port {self.discovery_port}).")
+        except OSError:
+            print(f"[Discovery] ⚠️ Port {self.discovery_port} belegt – kein Listener aktiv.")
+        self.send_join()
 
     def stop(self):
-        """Discovery Service stoppen"""
         self.running = False
-        self.sock.close()
-
-    def listen_for_discoveries(self):
-        """Auf Discovery-Nachrichten hören"""
-        listener_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        listener_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.send_leave()
         try:
-            listener_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-        except AttributeError:
+            self.listen_socket.close()
+        except Exception:
             pass
-        listener_sock.settimeout(1)
 
-        try:
-            listener_sock.bind(('', self.config['network']['discovery_port']))
-
-            while self.running:
-                try:
-                    data, addr = listener_sock.recvfrom(1024)
-                    message = json.loads(data.decode('utf-8'))
-
-                    if message.get('type') == 'discovery' and message.get('username') != self.username:
-                        username = message.get('username', 'Unknown')
-                        tcp_port = message.get('tcp_port', 0)
-                        timestamp = message.get('timestamp', time.time())
-
-                        # Nutzer zur Liste hinzufügen / aktualisieren
-                        self.ipc_handler.update_user_list(username, addr[0], tcp_port, timestamp)
-
-                        # WHO-Request: antworte direkt
-                        if message.get('action') == 'request':
-                            self.send_discovery_response(addr[0])
-
-                    # Optional: Nutzer, der 'quit' gesendet hat
-                    if message.get('type') == 'system' and 'verlassen' in message.get('content', ''):
-                        quit_user = message.get('sender')
-                        if quit_user and quit_user != self.username:
-                            print(f"⚠️  Nutzer '{quit_user}' hat den Chat verlassen – wird entfernt.")
-                            self.ipc_handler.remove_user_by_name(quit_user)
-
-                except socket.timeout:
-                    continue
-                except Exception as e:
-                    print(f"Discovery Listener Error: {e}")
-
-        except Exception as e:
-            print(f"Discovery Bind Error: {e}")
-        finally:
-            listener_sock.close()
-
-    def broadcast_presence(self):
-        """Eigene Präsenz im Netzwerk bekannt geben"""
+    def listen_loop(self):
         while self.running:
             try:
-                discovery_msg = {
-                    'type': 'discovery',
-                    'action': 'announce',
-                    'username': self.username,
-                    'ip': self.local_ip,
-                    'tcp_port': self.tcp_port,
-                    'timestamp': time.time()
-                }
-
-                message = json.dumps(discovery_msg).encode('utf-8')
-                broadcast_addr = self.config['network']['broadcast_address']
-                discovery_port = self.config['network']['discovery_port']
-                self.sock.sendto(message, (broadcast_addr, discovery_port))
-
-                time.sleep(self.config['network']['discovery_interval'])
-
+                data, addr = self.listen_socket.recvfrom(1024)
+                message = data.decode('utf-8', errors='ignore').strip()
+                self.handle_message(message, addr[0])
+            except socket.timeout:
+                continue
             except Exception as e:
-                print(f"Broadcast Error: {e}")
-                time.sleep(5)
+                print(f"[Discovery] Empfangsfehler: {e}")
 
-    def send_discovery_response(self, target_ip: str):
-        """Antwort auf WHO-Anfrage senden"""
-        try:
-            response_msg = {
-                'type': 'discovery',
-                'action': 'response',
-                'username': self.username,
-                'ip': self.local_ip,
-                'tcp_port': self.tcp_port,
-                'timestamp': time.time()
-            }
+    def handle_message(self, message: str, sender_ip: str):
+        if message.startswith("JOIN"):
+            parts = message.split(" ")
+            if len(parts) == 3:
+                peer, port = parts[1], int(parts[2])
+                if peer != self.username:
+                    self.ipc_handler.update_user_list(peer, sender_ip, port, time.time())
 
-            message = json.dumps(response_msg).encode('utf-8')
-            discovery_port = self.config['network']['discovery_port']
-            self.sock.sendto(message, (target_ip, discovery_port))
+        elif message.startswith("LEAVE"):
+            parts = message.split(" ")
+            if len(parts) == 2:
+                peer = parts[1]
+                if peer != self.username:
+                    self.ipc_handler.remove_user_by_name(peer)
 
-        except Exception as e:
-            print(f"Discovery Response Error: {e}")
+        elif message == "WHO":
+            self.send_knowusers(sender_ip)
+
+        elif message.startswith("KNOWUSERS"):
+            payload = message[10:]
+            for chunk in payload.split(","):
+                parts = chunk.strip().split(" ")
+                if len(parts) == 3:
+                    peer, ip, port = parts[0], parts[1], int(parts[2])
+                    if peer != self.username:
+                        self.ipc_handler.update_user_list(peer, ip, port, time.time())
+
+    def send_udp_broadcast(self, text: str):
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            s.sendto((text + "\n").encode('utf-8'),
+                     (self.broadcast_ip, self.discovery_port))
+
+    def send_join(self):
+        self.send_udp_broadcast(f"JOIN {self.username} {self.chat_tcp_port}")
+
+    def send_leave(self):
+        self.send_udp_broadcast(f"LEAVE {self.username}")
 
     def request_discovery(self):
-        """Aktive Discovery-Anfrage senden (für /refresh oder /who)"""
+        # Sende zuerst JOIN, damit alle dich kennen, dann WHO
+        self.send_join()
+        time.sleep(0.1)  # kleine Verzögerung, damit JOIN verarbeitet wird
+        self.send_udp_broadcast("WHO")
+
+    def send_knowusers(self, target_ip: str):
+        users = self.ipc_handler.get_active_users(only_visible=True)
+        if not users:
+            return
+
+        parts = [f"{u} {info['ip']} {info['tcp_port']}" for u, info in users.items()]
+        msg = "KNOWUSERS " + ", ".join(parts) + "\n"
+
+        target_port = self.chat_tcp_port
+        for info in self.ipc_handler.get_active_users(only_visible=False).values():
+            if info['ip'] == target_ip:
+                target_port = info['tcp_port']
+                break
+
         try:
-            request_msg = {
-                'type': 'discovery',
-                'action': 'request',
-                'username': self.username,
-                'ip': self.local_ip,
-                'tcp_port': self.tcp_port,
-                'timestamp': time.time()
-            }
-
-            message = json.dumps(request_msg).encode('utf-8')
-            broadcast_addr = self.config['network']['broadcast_address']
-            discovery_port = self.config['network']['discovery_port']
-            self.sock.sendto(message, (broadcast_addr, discovery_port))
-
+            with socket.create_connection(
+                (target_ip, target_port),
+                timeout=self.config['system']['socket_timeout']
+            ) as sock:
+                sock.sendall(msg.encode('utf-8'))
         except Exception as e:
-            print(f"Discovery Request Error: {e}")
+            print(f"[Discovery] Fehler beim Senden von KNOWUSERS an {target_ip}:{target_port}: {e}")

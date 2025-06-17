@@ -1,27 +1,30 @@
-# Simple Local Chat Protocol (SLCP) Configuration
+# SLCP-Konfiguration für Simple Local Chat
+
+handle = "DefaultUser"  # Benutzername
 
 [network]
-# UDP Port für Discovery Service
-discovery_port = 12345
-# TCP Port für Chat Server
-chat_port = 12346
-# Broadcast Adresse für Discovery
-broadcast_address = "255.255.255.255"
-# Discovery Intervall in Sekunden
-discovery_interval = 5
+# UDP-Port für Discovery-Dienst (laut SLCP-Vorgabe fest: 4000)
+whoisport = 4000
 
-[user]
-# Standard Nutzername (kann über CLI überschrieben werden)
-default_username = "DefaultUser"
-# Maximale Nachrichtenlänge
-max_message_length = 1024
-# Maximale Bildgröße in Bytes (1MB)
-max_image_size = 1048576
+# Lokaler UDP-Portbereich für Client → niedrigster freier wird verwendet (optional)
+port = [5000, 5010]
+
+# TCP-Port für den Chatserver (darf durch Programm überschrieben werden)
+chat_port = 5001
+
+# Broadcast-Adresse für Discovery (Default: 255.255.255.255)
+broadcast_address = "255.255.255.255"
 
 [system]
-# Timeout für Socket-Operationen in Sekunden
+# Antwortnachricht im Autoreply-Modus
+autoreply = "Ich bin gerade nicht verfügbar."
+
+# Speicherort für empfangene Bilder
+imagepath = "images/"
+
+# Socket-Timeout in Sekunden (TCP/UDP-Verbindungen)
 socket_timeout = 5
-# Anzahl der Worker-Threads
-worker_threads = 2
-# Log-Level (DEBUG, INFO, WARNING, ERROR)
-log_level = "INFO"
+
+[user]
+# Maximale Bildgröße in Bytes (z. B. 1 MB)
+max_image_size = 5242880

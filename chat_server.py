@@ -1,13 +1,9 @@
-"""
-Chat Server - Empfängt eingehende Nachrichten über TCP
-Verarbeitet Text- und Bildnachrichten (Base64)
-"""
-
 import socket
 import threading
-import json
-import base64
+import time
+import os
 from typing import Dict, Any
+
 
 class ChatServer:
     def __init__(self, config: Dict[str, Any], ipc_handler):
@@ -17,13 +13,11 @@ class ChatServer:
         self.server_socket = None
 
     def get_free_tcp_port(self) -> int:
-        """Wähle automatisch einen freien TCP-Port vom OS"""
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.bind(('', 0))
             return s.getsockname()[1]
 
     def start(self):
-        """Chat Server starten"""
         self.running = True
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -31,36 +25,27 @@ class ChatServer:
 
         try:
             configured_port = self.config['network'].get('chat_port', 0)
-
-            # Wenn Port 0 oder belegt → freien Port wählen
             try:
                 self.server_socket.bind(('', configured_port))
             except OSError:
-                print(f"⚠️ Port {configured_port} belegt – freier Port wird verwendet.")
                 configured_port = self.get_free_tcp_port()
                 self.server_socket.bind(('', configured_port))
 
             self.config['network']['chat_port'] = configured_port
             self.server_socket.listen(5)
-
-            print(f"Chat Server läuft auf Port {configured_port}")
-
-            server_thread = threading.Thread(target=self.accept_connections)
-            server_thread.daemon = True
-            server_thread.start()
+            print(f"[Server] Lauscht auf TCP-Port {configured_port}")
+            threading.Thread(target=self.accept_connections, daemon=True).start()
 
         except Exception as e:
-            print(f"Server Start Error: {e}")
+            print(f"❌ Fehler beim Serverstart: {e}")
             self.running = False
 
     def stop(self):
-        """Server stoppen"""
         self.running = False
         if self.server_socket:
             self.server_socket.close()
 
     def accept_connections(self):
-        """Neue Verbindungen annehmen"""
         while self.running:
             try:
                 client_socket, addr = self.server_socket.accept()
@@ -69,86 +54,81 @@ class ChatServer:
                 continue
             except Exception as e:
                 if self.running:
-                    print(f"❌ Accept Connection Error: {e}")
+                    print(f"❌ Verbindungsfehler: {e}")
 
     def handle_client(self, client_socket: socket.socket, addr):
-        """Nachricht eines verbundenen Clients empfangen"""
         try:
-            data = b""
-            while True:
-                chunk = client_socket.recv(4096)
-                if not chunk:
-                    break
-                data += chunk
-                try:
-                    json.loads(data.decode('utf-8'))
-                    break
-                except:
-                    continue
+            with client_socket.makefile("rb") as sockfile:
+                line = sockfile.readline().decode("utf-8", errors="ignore").strip()
+                parts = line.split(" ", 2)
+                cmd = parts[0].upper()
 
-            if data:
-                message = json.loads(data.decode('utf-8'))
-                self.process_message(message, addr[0])
+                if cmd == "MSG" and len(parts) >= 3:
+                    recipient = parts[1]
+                    message = parts[2]
+                    display_msg = {
+                        'type': 'text',
+                        'sender_ip': addr[0],
+                        'content': message,
+                        'timestamp': time.time()
+                    }
+                    self.ipc_handler.send_message(display_msg)
+
+                elif cmd == "IMG" and len(parts) == 3:
+                    recipient = parts[1]
+                    size = int(parts[2])
+                    image_data = sockfile.read(size)
+
+                    # 🔽 Bildordner definieren
+                    folder = "/Users/arda/Documents/2 Semester/BSRN/Projekt/BSRN-Chat-tool/bilder"
+                    os.makedirs(folder, exist_ok=True)
+
+                    # 🔽 Bildformat automatisch erkennen
+                    ext = ".bin"
+                    if image_data.startswith(b"\x89PNG\r\n\x1a\n"):
+                        ext = ".png"
+                    elif image_data.startswith(b"\xff\xd8"):
+                        ext = ".jpg"
+                    elif image_data.startswith(b"GIF87a") or image_data.startswith(b"GIF89a"):
+                        ext = ".gif"
+
+                    # 🔽 Bild speichern
+                    filename = f"received_{int(time.time())}{ext}"
+                    filepath = os.path.join(folder, filename)
+                    with open(filepath, "wb") as f:
+                        f.write(image_data)
+
+                    # 🔽 Optional: automatisch öffnen (nur bei macOS aktivieren)
+                    # os.system(f'open "{filepath}"')
+
+                    display_msg = {
+                        'type': 'image',
+                        'sender_ip': addr[0],
+                        'filename': filepath,
+                        'timestamp': time.time()
+                    }
+                    self.ipc_handler.send_message(display_msg)
+
+                elif cmd == "LEAVE" and len(parts) == 2:
+                    handle = parts[1]
+                    self.ipc_handler.remove_user_by_name(handle)
+                    display_msg = {
+                        'type': 'system',
+                        'content': f"{handle} hat den Chat verlassen.",
+                        'timestamp': time.time()
+                    }
+                    self.ipc_handler.send_message(display_msg)
+
+                elif cmd == "KNOWUSERS":
+                    entries = line[10:].split(",")
+                    for entry in entries:
+                        entry_parts = entry.strip().split(" ")
+                        if len(entry_parts) == 3:
+                            handle, ip, port = entry_parts
+                            if handle != self.config.get("handle"):
+                                self.ipc_handler.update_user_list(handle, ip, int(port), time.time())
 
         except Exception as e:
-            print(f"❌ Client Handler Error: {e}")
+            print(f"❌ Fehler bei Nachricht: {e}")
         finally:
             client_socket.close()
-
-    def process_message(self, message: Dict[str, Any], sender_ip: str):
-        """Verarbeite empfangene Nachricht"""
-        try:
-            msg_type = message.get('type', 'unknown')
-            sender = message.get('sender', 'Unknown')
-
-            if msg_type == 'text':
-                display_msg = {
-                    'type': 'text',
-                    'sender': sender,
-                    'content': message.get('content', ''),
-                    'timestamp': message.get('timestamp', 0),
-                    'sender_ip': sender_ip
-                }
-                self.ipc_handler.send_message(display_msg)
-
-            elif msg_type == 'image':
-                display_msg = {
-                    'type': 'image',
-                    'sender': sender,
-                    'image_data': message.get('image_data', ''),
-                    'filename': message.get('filename', 'image.jpg'),
-                    'timestamp': message.get('timestamp', 0),
-                    'sender_ip': sender_ip
-                }
-                self.ipc_handler.send_message(display_msg)
-
-            elif msg_type == 'system':
-                content = message.get('content', '').lower()
-
-                # Prüfen ob es eine Verabschiedung ist → dann sofort entfernen
-                if "hat den chat verlassen" in content:
-                    self.ipc_handler.remove_user_by_name(sender)
-
-                display_msg = {
-                    'type': 'system',
-                    'sender': 'System',
-                    'content': message.get('content', ''),
-                    'timestamp': message.get('timestamp', 0)
-                }
-                self.ipc_handler.send_message(display_msg)
-
-        except Exception as e:
-            print(f"❌ Message Processing Error: {e}")
-
-    def save_image(self, image_data: str, filename: str) -> str:
-        """Bild aus Base64 speichern"""
-        try:
-            image_bytes = base64.b64decode(image_data)
-            safe_filename = "".join(c for c in filename if c.isalnum() or c in "._-")
-            filepath = f"received_{safe_filename}"
-            with open(filepath, 'wb') as f:
-                f.write(image_bytes)
-            return filepath
-        except Exception as e:
-            print(f"❌ Image Save Error: {e}")
-            return None

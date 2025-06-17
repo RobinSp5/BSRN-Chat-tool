@@ -1,11 +1,9 @@
-# Command Line Interface für das Chat-Programm
-# Verarbeitet Nutzerbefehle und zeigt Nachrichten an
-
-
 import threading
 import time
 import os
+import shlex
 from typing import Dict, Any
+
 
 class CLI:
     def __init__(self, config: Dict[str, Any], ipc_handler, chat_client, discovery_service):
@@ -14,194 +12,187 @@ class CLI:
         self.chat_client = chat_client
         self.discovery_service = discovery_service
         self.running = False
+        self.last_input_time = time.time()
+        self.inactivity_timeout = 60
+        self.autoreply_active = False
 
     def start(self):
-        """CLI starten"""
         self.running = True
-
-        # Nachrichtenausgabe-Thread
-        display_thread = threading.Thread(target=self.display_messages)
-        display_thread.daemon = True
-        display_thread.start()
-
+        threading.Thread(target=self.display_messages, daemon=True).start()
+        threading.Thread(target=self.inactivity_monitor, daemon=True).start()
         self.show_welcome()
         self.command_loop()
 
     def stop(self):
-        """CLI stoppen"""
         self.running = False
 
     def show_welcome(self):
-        """Willkommensnachricht anzeigen"""
         print("=" * 50)
         print("     Simple Local Chat (SLCP)")
         print("=" * 50)
-        print(f"Nutzer: {self.chat_client.username}")
+        print("📢 Du bist aktuell nicht im Chat angemeldet.")
+        print("Melde dich mit /join <benutzername> an.")
         print("Verfügbare Befehle (alle mit '/'): ")
         print("  /help           - Hilfe anzeigen")
-        print("  /who            - Aktive Nutzer anzeigen")
+        print("  /join <name>    - Chat beitreten (JOIN)")
+        print("  /who            - Nutzer suchen (WHO)")
         print("  /msg <text>     - Nachricht an alle senden")
         print("  /pm <user> <msg>- Private Nachricht senden")
-        print("  /img <path>     - Bild an alle senden")
-        print("  /refresh        - Nutzer neu suchen")
-        print("  /quit           - Programm beenden")
+        print("  /img <pfad>     - Bild an alle senden")
+        print("  /quit           - Chat verlassen")
         print("-" * 50)
 
     def command_loop(self):
-        """Haupt-Befehlsschleife"""
         while self.running:
             try:
                 user_input = input("> ").strip()
+                self.last_input_time = time.time()
+                if self.autoreply_active:
+                    self.autoreply_active = False
+                    self.ipc_handler.set_visibility(True)
+                    print("🟢 Du bist wieder aktiv.")
                 if not user_input:
                     continue
-
                 if not user_input.startswith("/"):
-                    print("⚠️  Ungültiger Befehl. Befehle müssen mit '/' beginnen (z.B. /msg Hallo)")
+                    print("⚠️  Befehle müssen mit '/' beginnen.")
                     continue
+                self.process_command(user_input[1:])
+            except (KeyboardInterrupt, EOFError):
+                print("\nChat wird beendet.")
+                self.running = False
 
-                command = user_input[1:]
-                self.process_command(command)
-
-            except KeyboardInterrupt:
-                print("\nProgramm wird beendet...")
-                break
-            except EOFError:
-                break
+    def inactivity_monitor(self):
+        while self.running:
+            if time.time() - self.last_input_time > self.inactivity_timeout and not self.autoreply_active:
+                self.autoreply_active = True
+                self.ipc_handler.set_visibility(False)
+                print("\n🟡 Du bist inaktiv – Autoreply-Modus aktiviert.")
+                print("> ", end="", flush=True)
+            time.sleep(1)
 
     def process_command(self, command: str):
-        """Befehl verarbeiten"""
-        parts = command.split(' ', 2)
-        cmd = parts[0].lower()
+        try:
+            parts = shlex.split(command)
+            if not parts:
+                return
+            cmd = parts[0].lower()
 
-        if cmd == 'help':
-            self.show_help()
-        elif cmd == 'who':
-            self.who_with_discovery()
-        elif cmd == 'msg':
-            if len(parts) >= 2:
-                message = ' '.join(parts[1:])
-                self.send_broadcast_message(message)
-            else:
-                print("Verwendung: /msg <nachricht>")
-        elif cmd == 'pm':
-            if len(parts) >= 3:
-                username = parts[1]
-                message = parts[2]
-                self.send_private_message(username, message)
-            else:
-                print("Verwendung: /pm <nutzer> <nachricht>")
-        elif cmd == 'img':
-            if len(parts) >= 2:
-                image_path = parts[1]
-                self.send_image_broadcast(image_path)
-            else:
-                print("Verwendung: /img <pfad>")
-        elif cmd == 'refresh':
-            self.refresh_users()
-        elif cmd == 'quit' or cmd == 'exit':
-            self.running = False
-        else:
-            print(f"Unbekannter Befehl: {cmd}. /help für Hilfe.")
+            if cmd == "help":
+                self.show_help()
 
-    def who_with_discovery(self):
-        """Discovery anstoßen, dann aktive Nutzer anzeigen"""
-        print("📡 Suche nach aktiven Nutzern...")
-        self.discovery_service.request_discovery()
-        time.sleep(2)
-        self.show_active_users()
+            elif cmd == "join":
+                if len(parts) < 2:
+                    print("Verwendung: /join <benutzername>")
+                    return
+                name = parts[1].strip()
+                if not name:
+                    print("⚠️ Name darf nicht leer sein.")
+                    return
+                self.chat_client.username = name
+                self.discovery_service.username = name
+                self.discovery_service.send_join()
+                print(f"✅ Du hast dich erfolgreich als \"{name}\" im Chat angemeldet.")
+
+            elif cmd == "who":
+                self.discovery_service.request_discovery()
+                time.sleep(2)
+                self.show_active_users()
+
+            elif cmd == "msg":
+                if len(parts) >= 2:
+                    self.send_broadcast_message(" ".join(parts[1:]))
+                else:
+                    print("Verwendung: /msg <nachricht>")
+
+            elif cmd == "pm":
+                if len(parts) >= 3:
+                    self.send_private_message(parts[1], " ".join(parts[2:]))
+                else:
+                    print("Verwendung: /pm <nutzer> <nachricht>")
+
+            elif cmd == "img":
+                if len(parts) >= 2:
+                    self.send_image_broadcast(" ".join(parts[1:]))
+                else:
+                    print("Verwendung: /img <pfad>")
+
+            elif cmd == "quit":
+                if self.chat_client.username:
+                    self.discovery_service.send_leave()
+                    print(f"🚪 {self.chat_client.username} hat den Chat verlassen.")
+                self.running = False
+
+            else:
+                print(f"Unbekannter Befehl: {cmd}")
+
+        except Exception as e:
+            print(f"⚠️ Fehler beim Verarbeiten des Befehls: {e}")
 
     def show_help(self):
-        """Hilfetext anzeigen"""
         print("Verfügbare Befehle:")
-        print("  /help           - Diese Hilfe anzeigen")
-        print("  /who            - Aktive Nutzer anzeigen")
-        print("  /msg <text>     - Nachricht an alle senden")
-        print("  /pm <user> <msg>- Private Nachricht senden")
-        print("  /img <path>     - Bild an alle senden")
-        print("  /refresh        - Nutzer neu suchen")
-        print("  /quit           - Programm beenden")
+        print("  /join <name>    - JOIN senden (Chat beitreten)")
+        print("  /who            - WHO senden (aktive Nutzer abfragen)")
+        print("  /msg <text>     - Nachricht an alle")
+        print("  /pm <user> <msg>- Private Nachricht")
+        print("  /img <pfad>     - Bild an alle")
+        print("  /quit           - LEAVE senden & beenden")
 
     def show_active_users(self):
-        """Aktive Nutzer auflisten"""
         users = self.ipc_handler.get_active_users()
         if not users:
-            print("Keine aktiven Nutzer gefunden.")
+            print("Keine Nutzer bekannt.")
             return
-
-        print(f"Aktive Nutzer ({len(users)}):")
-        for username, user_info in users.items():
-            ip = user_info.get('ip', 'Unbekannt')
-            port = user_info.get('tcp_port', '?')
-            last_seen = user_info.get('last_seen', 0)
-            time_str = time.strftime('%H:%M:%S', time.localtime(last_seen))
-            print(f"  {username} ({ip}:{port}) - zuletzt gesehen: {time_str}")
+        print("Aktive Nutzer:")
+        for name, info in users.items():
+            print(f"  {name} @ {info['ip']}:{info['tcp_port']}")
 
     def send_broadcast_message(self, message: str):
-        """Nachricht an alle Nutzer senden"""
+        if not self.chat_client.username:
+            print("⚠️ Bitte zuerst mit /join <name> beitreten.")
+            return
         users = self.ipc_handler.get_active_users()
         if not users:
-            print("Keine aktiven Nutzer zum Senden.")
+            print("❌ Keine Nutzer zum Senden.")
             return
-
-        successful_sends = 0
-        for username, user_info in users.items():
-            target_ip = user_info.get('ip')
-            target_port = user_info.get('tcp_port')
-            if target_ip and target_port and self.chat_client.send_text_message(target_ip, target_port, message):
-                successful_sends += 1
-
-        print(f"Nachricht an {successful_sends} von {len(users)} Nutzern gesendet.")
+        sent = 0
+        for name, info in users.items():
+            if self.chat_client.send_text_message(info['ip'], info['tcp_port'], name, message):
+                sent += 1
+        print(f"Nachricht gesendet an {sent}/{len(users)}")
 
     def send_private_message(self, username: str, message: str):
-        """Private Nachricht senden"""
+        if not self.chat_client.username:
+            print("⚠️ Bitte zuerst mit /join <name> beitreten.")
+            return
         users = self.ipc_handler.get_active_users()
-        if username not in users:
-            print(f"Nutzer '{username}' nicht gefunden.")
+        user = users.get(username)
+        if not user:
+            print(f"Nutzer {username} nicht bekannt.")
             return
-
-        user_info = users[username]
-        target_ip = user_info.get('ip')
-        target_port = user_info.get('tcp_port')
-
-        if not target_ip or not target_port:
-            print(f"IP oder Port für '{username}' nicht verfügbar.")
-            return
-
-        success = self.chat_client.send_text_message(target_ip, target_port, message)
+        success = self.chat_client.send_text_message(user['ip'], user['tcp_port'], username, message)
         if success:
             print(f"[Du → {username}]: {message}")
         else:
-            print(f"Fehler beim Senden der Nachricht an {username}.")
+            print(f"❌ Senden fehlgeschlagen an {username}.")
 
     def send_image_broadcast(self, image_path: str):
-        """Bild an alle Nutzer senden"""
-        if not os.path.exists(image_path):
-            print(f"Datei nicht gefunden: {image_path}")
+        if not self.chat_client.username:
+            print("⚠️ Bitte zuerst mit /join <name> beitreten.")
             return
-
+        if not os.path.isfile(image_path):
+            print(f"❌ Bild nicht gefunden: {image_path}")
+            return
         users = self.ipc_handler.get_active_users()
         if not users:
-            print("Keine aktiven Nutzer zum Senden.")
+            print("❌ Keine Nutzer bekannt.")
             return
-
-        successful_sends = 0
-        for username, user_info in users.items():
-            target_ip = user_info.get('ip')
-            target_port = user_info.get('tcp_port')
-            if target_ip and target_port and self.chat_client.send_image_message(target_ip, target_port, image_path):
-                successful_sends += 1
-
-        print(f"Bild an {successful_sends} von {len(users)} Nutzern gesendet.")
-
-    def refresh_users(self):
-        """Aktive Nutzer erneut suchen"""
-        print("Suche nach aktiven Nutzern...")
-        self.discovery_service.request_discovery()
-        time.sleep(2)
-        self.show_active_users()
+        sent = 0
+        for name, info in users.items():
+            if self.chat_client.send_image_message(info['ip'], info['tcp_port'], name, image_path):
+                sent += 1
+        print(f"Bild gesendet an {sent}/{len(users)}")
 
     def display_messages(self):
-        """Empfangene Nachrichten anzeigen"""
         while self.running:
             message = self.ipc_handler.get_message()
             if message:
@@ -209,35 +200,26 @@ class CLI:
             time.sleep(0.1)
 
     def show_message(self, message: Dict[str, Any]):
-        """Eine empfangene Nachricht anzeigen"""
-        msg_type = message.get('type', 'unknown')
-        sender = message.get('sender', 'Unknown')
+        msg_type = message.get('type')
+        sender_ip = message.get('sender_ip', 'Unbekannt')
         timestamp = message.get('timestamp', 0)
         time_str = time.strftime('%H:%M:%S', time.localtime(timestamp))
 
         if msg_type == 'text':
-            content = message.get('content', '')
-            print(f"\n[{time_str}] {sender}: {content}")
+            print(f"\n[{time_str}] Nachricht von {sender_ip}: {message.get('content')}")
+            if self.autoreply_active:
+                sender_name = None
+                users = self.ipc_handler.get_active_users(only_visible=False)
+                for name, info in users.items():
+                    if info["ip"] == sender_ip:
+                        sender_name = name
+                        break
+                if sender_name:
+                    reply = self.config["system"].get("autoreply", "Ich bin gerade nicht verfügbar.")
+                    self.chat_client.send_text_message(sender_ip, info["tcp_port"], sender_name, reply)
+
         elif msg_type == 'image':
-            filename = message.get('filename', 'image.jpg')
-            print(f"\n[{time_str}] {sender} hat ein Bild gesendet: {filename}")
-            image_data = message.get('image_data', '')
-            if image_data:
-                self.save_received_image(image_data, filename, sender)
+            print(f"\n[{time_str}] Bild empfangen von {sender_ip}: {message.get('filename')}")
         elif msg_type == 'system':
-            content = message.get('content', '')
-            print(f"\n[{time_str}] System: {content}")
-
+            print(f"\n[{time_str}] SYSTEM: {message.get('content')}")
         print("> ", end="", flush=True)
-
-    def save_received_image(self, image_data: str, filename: str, sender: str):
-        """Bilddatei speichern"""
-        try:
-            import base64
-            image_bytes = base64.b64decode(image_data)
-            safe_filename = f"{sender}_{filename}"
-            with open(safe_filename, 'wb') as f:
-                f.write(image_bytes)
-            print(f"Bild gespeichert als: {safe_filename}")
-        except Exception as e:
-            print(f"Fehler beim Speichern des Bildes: {e}")
