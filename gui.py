@@ -228,6 +228,7 @@ class ChatGUI:
 
     # Senden-Button ()
     def send_message(self):
+        self.discovery_service.request_discovery() # Discovery erneut anfordern
         text = self.message_entry.get().strip()
         if not text:
             return
@@ -254,6 +255,7 @@ class ChatGUI:
 
     # Verbinden-Button - mit Username-Eingabe
     def connect_to_server(self):
+        self.discovery_service.request_discovery() # Discovery erneut anfordern
         # Nach neuem Username fragen
         new_username = simpledialog.askstring(
             "Username ändern", 

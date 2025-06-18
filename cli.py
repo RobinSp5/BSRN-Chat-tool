@@ -73,7 +73,7 @@ class CLI:
                 self.ipc_handler.set_visibility(False)
                 print("\n🟡 Du bist inaktiv – Autoreply-Modus aktiviert.")
                 print("> ", end="", flush=True)
-                self.discovery_service.request_discovery()
+                self.discovery_service.request_discovery() # Discovery erneut anfordern
             time.sleep(1)
 
     def process_command(self, command: str):
