@@ -33,7 +33,6 @@ class DiscoveryService:
         try:
             self.listen_socket.bind(('', self.discovery_port))
             threading.Thread(target=self.listen_loop, daemon=True).start()
-           
         except OSError:
             print(f"[Discovery] Fehler: Port {self.discovery_port} bereits belegt oder nicht verfügbar.")
         self.send_join()
@@ -64,13 +63,18 @@ class DiscoveryService:
             if len(parts) == 3:
                 peer, port = parts[1], int(parts[2])
                 if peer != self.username:
+                    known_users = self.ipc_handler.get_active_users(only_visible=False)
+                    already_known = any(
+                        u == peer and info["ip"] == sender_ip and info["tcp_port"] == port
+                        for u, info in known_users.items()
+                    )
                     self.ipc_handler.update_user_list(peer, sender_ip, port, time.time())
-                    # System-Nachricht: Peer ist beigetreten
-                    self.ipc_handler.send_message({
-                        'type': 'system',
-                        'content': f"{peer} ist dem Chat beigetreten.",
-                        'timestamp': time.time()
-                    })
+                    if not already_known:
+                        self.ipc_handler.send_message({
+                            'type': 'system',
+                            'content': f"{peer} ist dem Chat beigetreten.",
+                            'timestamp': time.time()
+                        })
 
         elif message.startswith("LEAVE"):
             parts = message.split(" ")
@@ -78,7 +82,6 @@ class DiscoveryService:
                 peer = parts[1]
                 if peer != self.username:
                     self.ipc_handler.remove_user_by_name(peer)
-                    # System-Nachricht: Peer hat verlassen
                     self.ipc_handler.send_message({
                         'type': 'system',
                         'content': f"{peer} hat den Chat verlassen.",
@@ -100,28 +103,26 @@ class DiscoveryService:
     def send_udp_broadcast(self, text: str):
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-            s.sendto((text + "\n").encode('utf-8'),
-                     (self.broadcast_ip, self.discovery_port))
+            s.sendto((text + "\n").encode('utf-8'), (self.broadcast_ip, self.discovery_port))
 
     def send_join(self):
-        self.send_udp_broadcast(f"JOIN {self.username} {self.chat_tcp_port}")
         if not self.username:
             return
         self.send_udp_broadcast(f"JOIN {self.username} {self.chat_tcp_port}")
+        self.send_to_all_known_peers_as_knowuser()
 
     def send_leave(self):
         self.send_udp_broadcast(f"LEAVE {self.username}")
 
     def request_discovery(self):
-        #self.send_join()
-        #time.sleep(0.1)
+        self.send_join()
+        time.sleep(0.05)
         self.send_udp_broadcast("WHO")
 
     def send_knowusers(self, target_ip: str):
         users = self.ipc_handler.get_active_users(only_visible=True)
         if not users:
             return
-
         parts = [f"{u} {info['ip']} {info['tcp_port']}" for u, info in users.items()]
         msg = "KNOWUSERS " + ", ".join(parts) + "\n"
 
@@ -140,24 +141,23 @@ class DiscoveryService:
         except Exception as e:
             print(f"[Discovery] Fehler beim Senden von KNOWUSERS an {target_ip}:{target_port}: {e}")
 
-if __name__ == "__main__":
-    class DummyIPC:
-        def update_user_list(self, name, ip, port, _): print(f"{name} gefunden @ {ip}:{port}")
-        def remove_user_by_name(self, name): print(f"{name} entfernt")
-        def get_active_users(self, only_visible=True): return {}
+    def send_to_all_known_peers_as_knowuser(self):
+        """Wird nach JOIN verwendet, um aktiv an andere Peers KNOWUSERS zu schicken"""
+        users = self.ipc_handler.get_active_users(only_visible=True)
+        if not users:
+            return
 
-    config = {
-        "network": {"broadcast_address": "255.255.255.255", "whoisport": 4000},
-        "system": {"socket_timeout": 2}
-    }
+        self_entry = f"{self.username} {self.config['network'].get('local_ip')} {self.chat_tcp_port}"
+        msg = "KNOWUSERS " + self_entry + "\n"
 
-    d = DiscoveryService(config, DummyIPC(), "TestUser", 5001)
-    d.start()
-
-    try:
-        while (cmd := input("> ").strip()) != "exit":
-            if cmd == "who": d.request_discovery()
-    except KeyboardInterrupt:
-        pass
-
-    d.stop()
+        for name, info in users.items():
+            if name == self.username:
+                continue
+            try:
+                with socket.create_connection(
+                    (info['ip'], info['tcp_port']),
+                    timeout=self.config['system']['socket_timeout']
+                ) as sock:
+                    sock.sendall(msg.encode("utf-8"))
+            except Exception as e:
+                print(f"[Discovery] Fehler bei aktivem Senden an {name}: {e}")
