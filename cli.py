@@ -125,7 +125,7 @@ class CLI:
             elif cmd == "quit":
                 if self.chat_client.username:
                     self.discovery_service.send_leave()
-                    print(f"🚪 {self.chat_client.username} hat den Chat verlassen.")
+                    print(f"{self.chat_client.username} hat den Chat verlassen.")
                 self.running = False
 
             elif cmd == "show_config":
@@ -145,7 +145,7 @@ class CLI:
                             self.config[config_section][config_key] = value
                             print(f"Konfiguration aktualisiert: {key} = {value}")
                         else:
-                            print(f"⚠️ Konfigurationssektion '{config_section}' nicht gefunden.")
+                            print(f"Konfigurationssektion '{config_section}' nicht gefunden.")
                     else:
                         self.config[key] = value
                         print(f"Konfiguration aktualisiert: {key} = {value}")

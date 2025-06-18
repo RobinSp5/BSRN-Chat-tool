@@ -65,6 +65,12 @@ class DiscoveryService:
                 peer, port = parts[1], int(parts[2])
                 if peer != self.username:
                     self.ipc_handler.update_user_list(peer, sender_ip, port, time.time())
+                    # System-Nachricht: Peer ist beigetreten
+                    self.ipc_handler.send_message({
+                        'type': 'system',
+                        'content': f"{peer} ist dem Chat beigetreten.",
+                        'timestamp': time.time()
+                    })
 
         elif message.startswith("LEAVE"):
             parts = message.split(" ")
@@ -72,6 +78,12 @@ class DiscoveryService:
                 peer = parts[1]
                 if peer != self.username:
                     self.ipc_handler.remove_user_by_name(peer)
+                    # System-Nachricht: Peer hat verlassen
+                    self.ipc_handler.send_message({
+                        'type': 'system',
+                        'content': f"{peer} hat den Chat verlassen.",
+                        'timestamp': time.time()
+                    })
 
         elif message == "WHO":
             self.send_knowusers(sender_ip)
@@ -93,13 +105,16 @@ class DiscoveryService:
 
     def send_join(self):
         self.send_udp_broadcast(f"JOIN {self.username} {self.chat_tcp_port}")
+        if not self.username:
+            return
+        self.send_udp_broadcast(f"JOIN {self.username} {self.chat_tcp_port}")
 
     def send_leave(self):
         self.send_udp_broadcast(f"LEAVE {self.username}")
 
     def request_discovery(self):
-        self.send_join()
-        time.sleep(0.1)
+        #self.send_join()
+        #time.sleep(0.1)
         self.send_udp_broadcast("WHO")
 
     def send_knowusers(self, target_ip: str):
