@@ -19,6 +19,7 @@ broadcast_address = "255.255.255.255"
 # Antwortnachricht im Autoreply-Modus
 autoreply = "Ich bin gerade nicht verfügbar."
 
+#Das Sorgt dafür, dass bilder automatisch, nachdem senden geöffnet werden dürfen
 image_autoview = true
 
 # Speicherort für empfangene Bilder
