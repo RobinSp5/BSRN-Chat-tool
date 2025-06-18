@@ -59,6 +59,9 @@ class ChatGUI:
         self.disconnect_button = ttk.Button(button_frame, text="Quit", command=self.disconnect_from_server)
         self.disconnect_button.pack(side=tk.RIGHT)
 
+        self.refresh_button = ttk.Button(button_frame, text="Aktualisieren", command=self.update_active_users)
+        self.refresh_button.pack(side=tk.RIGHT, padx=(5, 0))
+
         # Configure grid weights
         root.columnconfigure(0, weight=1)
         root.rowconfigure(0, weight=1)
@@ -103,7 +106,6 @@ class ChatGUI:
         chat_tcp_port     = config["network"].get("chat_port", 5001)
         self.ipc_handler  = IPCHandler()
         self.discovery    = DiscoveryService(config, self.ipc_handler, self.username, chat_tcp_port)
-        self.discovery.start()
         
         # Chat-Client initialisieren
         self.chat_client = ChatClient(config, self.username)
@@ -146,11 +148,11 @@ class ChatGUI:
                 user_display = f"{name} @ {info['ip']}:{info['tcp_port']}"
                 self.users_listbox.insert(tk.END, user_display)
 
-    # Startet eine Schleife, die alle 5 Sekunden die aktiven Nutzer aktualisiert
+    # Startet eine Schleife, die alle 500 ms die aktiven Nutzer aktualisiert
     def start_user_update_loop(self):
-        # alle 5 Sekunden neu laden
+        # alle 500ms neu laden
         self.update_active_users()
-        self.root.after(5000, self.start_user_update_loop)
+        self.root.after(500, self.start_user_update_loop)
 
     # Startet die Nachrichten-Abfrage
     def start_message_polling(self):
@@ -228,7 +230,7 @@ class ChatGUI:
 
     # Senden-Button ()
     def send_message(self):
-        self.discovery_service.request_discovery() # Discovery erneut anfordern
+        self.discovery.request_discovery() # Discovery erneut anfordern
         text = self.message_entry.get().strip()
         if not text:
             return
@@ -255,7 +257,12 @@ class ChatGUI:
 
     # Verbinden-Button - mit Username-Eingabe
     def connect_to_server(self):
-        self.discovery_service.request_discovery() # Discovery erneut anfordern
+        self.discovery.start()
+
+        time.sleep(0.5)  # Kurze Pause, um sicherzustellen, dass Discovery gestartet ist
+
+
+        self.discovery.request_discovery() # Discovery erneut anfordern
         # Nach neuem Username fragen
         new_username = simpledialog.askstring(
             "Username ändern", 
@@ -288,6 +295,12 @@ class ChatGUI:
         
         # Nutzerliste sofort aktualisieren
         self.update_active_users()
+
+
+    #Aktualisiern-Button
+    def refresh_users(self):
+        self.discovery.request_discovery()  # Discovery erneut anfordern
+        self.update_active_users()  # Nutzerliste aktualisieren
 
     # Quit-Button um das Programm zu beenden
     def disconnect_from_server(self):
