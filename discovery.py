@@ -40,7 +40,8 @@ class DiscoveryService:
     def stop(self):
         print("[Discovery] Beende Discovery-Service und schließe Socket...")
         self.running = False
-        self.send_leave()
+        #self.send_leave()
+        
         try:
             self.listen_socket.close()
         except Exception:
@@ -72,7 +73,7 @@ class DiscoveryService:
                     if not already_known:
                         self.ipc_handler.send_message({
                             'type': 'system',
-                            'content': f"{peer} ist dem Chat beigetreten. (Port {port})",
+                            'content': f"JOIN {peer} {port}",
                             'timestamp': time.time()
                         })
 

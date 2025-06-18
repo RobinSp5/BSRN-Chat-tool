@@ -122,10 +122,10 @@ class CLI:
                     self.send_image_broadcast(" ".join(parts[1:]))
                 else:
                     print("Verwendung: /img <pfad>")
+                    
             elif cmd == "quit":
                 if self.chat_client.username:
                     self.discovery_service.send_leave()
-                    print(f"{self.chat_client.username} hat den Chat verlassen.")
                 self.running = False
 
             elif cmd == "show_config":
