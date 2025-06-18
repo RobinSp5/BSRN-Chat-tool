@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from tkinter import simpledialog
 import time
 import os
 import toml
@@ -251,11 +252,40 @@ class ChatGUI:
         # Eingabe leeren
         self.message_entry.delete(0, tk.END)
 
-    # Verbinden-Button 
+    # Verbinden-Button - mit Username-Eingabe
     def connect_to_server(self):
-        # Discovery-Service schon gestartet – sende jetzt Deinen JOIN
+        # Nach neuem Username fragen
+        new_username = simpledialog.askstring(
+            "Username ändern", 
+            f"Aktueller Username: {self.username}\nNeuen Username eingeben:",
+            initialvalue=self.username
+        )
+        
+        # Wenn kein Username eingegeben oder abgebrochen wurde
+        if not new_username or not new_username.strip():
+            self.display_system_message("Verbindung abgebrochen - kein Username eingegeben")
+            return
+        
+        # Username bereinigen (Leerzeichen entfernen)
+        new_username = new_username.strip()
+        
+        # Prüfen ob Username geändert wurde
+        if new_username != self.username:
+            old_username = self.username
+            self.username = new_username
+            
+            # Chat-Client und Discovery-Service mit neuem Username aktualisieren
+            self.chat_client.username = new_username
+            self.discovery.username = new_username
+            
+            self.display_system_message(f"Username geändert: {old_username} → {new_username}")
+        
+        # JOIN mit (neuem) Username senden
         self.discovery.send_join()
-        self.display_system_message("JOIN versendet")
+        self.display_system_message(f"JOIN als '{self.username}' versendet")
+        
+        # Nutzerliste sofort aktualisieren
+        self.update_active_users()
 
     # Quit-Button um das Programm zu beenden
     def disconnect_from_server(self):
