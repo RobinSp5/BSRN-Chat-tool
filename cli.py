@@ -176,6 +176,8 @@ class CLI:
         print("  /msg <text>     - Nachricht an alle")
         print("  /pm <user> <msg>- Private Nachricht")
         print("  /img <pfad>     - Bild an alle")
+        print("  /show_config    - Aktuelle Konfiguration anzeigen")
+        print("  /edit_config <key> <value> - Konfiguration bearbeiten")
         print("  /quit           - LEAVE senden & beenden")
 
     def show_active_users(self):
