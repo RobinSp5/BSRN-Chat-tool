@@ -39,7 +39,7 @@ class ChatServer:
             threading.Thread(target=self.accept_connections, daemon=True).start()
 
         except Exception as e:
-            print(f"❌ Fehler beim Serverstart: {e}")
+            print(f"Fehler beim Serverstart: {e}")
             self.running = False
 
     def stop(self):
@@ -56,7 +56,7 @@ class ChatServer:
                 continue
             except Exception as e:
                 if self.running:
-                    print(f"❌ Verbindungsfehler: {e}")
+                    print(f"Verbindungsfehler: {e}")
 
     def handle_client(self, client_socket: socket.socket, addr):
         try:
@@ -81,7 +81,7 @@ class ChatServer:
                     try:
                         size = int(parts[2])
                     except ValueError:
-                        print(f"❌ Ungültige Bildgröße: {parts[2]}")
+                        print(f"Ungültige Bildgröße: {parts[2]}")
                         return
 
                     image_data = sockfile.read(size)
@@ -142,6 +142,6 @@ class ChatServer:
                                 self.ipc_handler.update_user_list(handle, ip, int(port), time.time())
 
         except Exception as e:
-            print(f"❌ Fehler bei Nachricht: {e}")
+            print(f"Fehler bei Nachricht: {e}")
         finally:
             client_socket.close()
