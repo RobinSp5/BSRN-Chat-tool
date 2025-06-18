@@ -40,7 +40,7 @@ class CLI:
         print("  /who            - Nutzer suchen (WHO)")
         print("  /msg <text>     - Nachricht an alle senden")
         print("  /pm <user> <msg>- Private Nachricht senden")
-        print("  /img <pfad>     - Bild an alle senden")
+        print("  /img <user> <pfad> - Bild privat senden")
         print("  /show_config    - Aktuelle Konfiguration anzeigen")
         print("  /edit_config <key> <value> - Konfiguration bearbeiten")
         print("  /quit           - Chat verlassen")
@@ -55,7 +55,7 @@ class CLI:
                     self.autoreply_active = False
                     self.ipc_handler.set_visibility(True)
                     print("🟢 Du bist wieder aktiv.")
-                    self.discovery_service.request_discovery() # Discovery erneut anfordern
+                    self.discovery_service.request_discovery()
                 if not user_input:
                     continue
                 if not user_input.startswith("/"):
@@ -73,7 +73,7 @@ class CLI:
                 self.ipc_handler.set_visibility(False)
                 print("\n🟡 Du bist inaktiv – Autoreply-Modus aktiviert.")
                 print("> ", end="", flush=True)
-                self.discovery_service.request_discovery() # Discovery erneut anfordern
+                self.discovery_service.request_discovery()
             time.sleep(1)
 
     def process_command(self, command: str):
@@ -106,7 +106,7 @@ class CLI:
 
             elif cmd == "msg":
                 if len(parts) >= 2:
-                    self.discovery_service.request_discovery() # Discovery erneut anfordern
+                    self.discovery_service.request_discovery()
                     self.send_broadcast_message(" ".join(parts[1:]))
                 else:
                     print("Verwendung: /msg <nachricht>")
@@ -118,11 +118,11 @@ class CLI:
                     print("Verwendung: /pm <nutzer> <nachricht>")
 
             elif cmd == "img":
-                if len(parts) >= 2:
-                    self.send_image_broadcast(" ".join(parts[1:]))
+                if len(parts) >= 3:
+                    self.send_image_to_user(parts[1], " ".join(parts[2:]))
                 else:
-                    print("Verwendung: /img <pfad>")
-                    
+                    print("Verwendung: /img <nutzer> <pfad>")
+
             elif cmd == "quit":
                 if self.chat_client.username:
                     self.discovery_service.send_leave()
@@ -159,9 +159,6 @@ class CLI:
                         print(f"Fehler beim Speichern der Konfiguration: {e}")
                 else:
                     print("Verwendung: /edit_config <schlüssel> <wert>")
-                    print("Beispiele:")
-                    print("  /edit_config name Alice")
-                    print("  /edit_config system.autoreply \"Bin gleich zurück\"")
 
             else:
                 print(f"Unbekannter Befehl: {cmd}")
@@ -171,14 +168,14 @@ class CLI:
 
     def show_help(self):
         print("Verfügbare Befehle:")
-        print("  /join <name>    - JOIN senden (Chat beitreten)")
-        print("  /who            - WHO senden (aktive Nutzer abfragen)")
-        print("  /msg <text>     - Nachricht an alle")
-        print("  /pm <user> <msg>- Private Nachricht")
-        print("  /img <pfad>     - Bild an alle")
-        print("  /show_config    - Aktuelle Konfiguration anzeigen")
+        print("  /join <name>         - JOIN senden (Chat beitreten)")
+        print("  /who                 - WHO senden (aktive Nutzer abfragen)")
+        print("  /msg <text>          - Nachricht an alle")
+        print("  /pm <user> <msg>     - Private Nachricht")
+        print("  /img <user> <pfad>   - Bild privat senden")
+        print("  /show_config         - Aktuelle Konfiguration anzeigen")
         print("  /edit_config <key> <value> - Konfiguration bearbeiten")
-        print("  /quit           - LEAVE senden & beenden")
+        print("  /quit                - LEAVE senden & beenden")
 
     def show_active_users(self):
         users = self.ipc_handler.get_active_users()
@@ -219,7 +216,7 @@ class CLI:
         else:
             print(f"Senden fehlgeschlagen an {username}.")
 
-    def send_image_broadcast(self, image_path: str):
+    def send_image_to_user(self, username: str, image_path: str):
         if not self.chat_client.username:
             print("Bitte zuerst mit /join <name> beitreten.")
             return
@@ -227,15 +224,15 @@ class CLI:
             print(f"Bild nicht gefunden: {image_path}")
             return
         users = self.ipc_handler.get_active_users()
-        if not users:
-            print("Keine Nutzer bekannt.")
+        user = users.get(username)
+        if not user:
+            print(f"Nutzer {username} nicht bekannt.")
             return
-        sent = 0
-        for name, info in users.items():
-            if name != self.chat_client.username:
-                if self.chat_client.send_image_message(info['ip'], info['tcp_port'], name, image_path):
-                    sent += 1
-        print(f"Bild gesendet an {sent}/{len(users) - 1 if self.chat_client.username in users else len(users)}")
+        success = self.chat_client.send_image_message(user['ip'], user['tcp_port'], username, image_path)
+        if success:
+            print(f"[Bild → {username}]: {os.path.basename(image_path)} gesendet.")
+        else:
+            print(f"Senden des Bildes an {username} fehlgeschlagen.")
 
     def display_messages(self):
         while self.running:
@@ -257,16 +254,10 @@ class CLI:
                 if info["ip"] == sender_ip:
                     sender_name = name
                     break
-
-            # Eigene IP aus Config oder leeren String holen
             local_ip = self.chat_client.config['network'].get('local_ip', '')
-
-            # Falls Absender IP die eigene IP ist, Namen setzen:
             if sender_ip == local_ip and sender_name is None:
                 sender_name = self.chat_client.username
-
             display_name = sender_name if sender_name else sender_ip
-
             print(f"\n[{time_str}] Nachricht von {display_name}: {message.get('content')}")
 
             if self.autoreply_active and sender_name:
@@ -278,4 +269,3 @@ class CLI:
         elif msg_type == 'system':
             print(f"\n[{time_str}] SYSTEM: {message.get('content')}")
         print("> ", end="", flush=True)
-
