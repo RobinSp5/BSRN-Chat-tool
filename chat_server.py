@@ -2,6 +2,8 @@ import socket
 import threading
 import time
 import os
+import subprocess
+import platform
 from typing import Dict, Any
 
 
@@ -84,11 +86,9 @@ class ChatServer:
 
                     image_data = sockfile.read(size)
 
-                    # Ordner aus config laden, Standard 'images' falls nicht definiert
                     folder = self.config.get("system", {}).get("imagepath", "images")
                     os.makedirs(folder, exist_ok=True)
 
-                    # Bildformat automatisch erkennen
                     ext = ".bin"
                     if image_data.startswith(b"\x89PNG\r\n\x1a\n"):
                         ext = ".png"
@@ -97,7 +97,6 @@ class ChatServer:
                     elif image_data.startswith(b"GIF87a") or image_data.startswith(b"GIF89a"):
                         ext = ".gif"
 
-                    # Bild speichern
                     filename = f"received_{int(time.time())}{ext}"
                     filepath = os.path.join(folder, filename)
                     with open(filepath, "wb") as f:
@@ -110,6 +109,18 @@ class ChatServer:
                         'timestamp': time.time()
                     }
                     self.ipc_handler.send_message(display_msg)
+
+                    # ➕ Bild automatisch öffnen (optional)
+                    if self.config.get("system", {}).get("image_autoview", True):
+                        try:
+                            if platform.system() == "Linux":
+                                subprocess.Popen(["xdg-open", filepath])
+                            elif platform.system() == "Darwin":
+                                subprocess.Popen(["open", filepath])
+                            elif platform.system() == "Windows":
+                                os.startfile(filepath)
+                        except Exception as e:
+                            print(f"[Bildanzeige] Fehler beim Öffnen: {e}")
 
                 elif cmd == "LEAVE" and len(parts) == 2:
                     handle = parts[1]
