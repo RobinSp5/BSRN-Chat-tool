@@ -72,7 +72,7 @@ class DiscoveryService:
                     if not already_known:
                         self.ipc_handler.send_message({
                             'type': 'system',
-                            'content': f"{peer} ist dem Chat beigetreten.",
+                            'content': f"{peer} ist dem Chat beigetreten. (Port {port})",
                             'timestamp': time.time()
                         })
 
