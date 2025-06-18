@@ -6,6 +6,8 @@ from typing import Dict, Any
 
 class DiscoveryService:
     def __init__(self, config: Dict[str, Any], ipc_handler, username: str, chat_tcp_port: int):
+        
+        #Kommentare für Debugging Ausgabe
         print(f"[Discovery] Initialisiere DiscoveryService mit:")
         print(f"            • Chat-Port (TCP): {chat_tcp_port}")
         print(f"            • Broadcast-Adresse: {config['network'].get('broadcast_address', '255.255.255.255')}")
@@ -106,20 +108,24 @@ class DiscoveryService:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
             s.sendto((text + "\n").encode('utf-8'), (self.broadcast_ip, self.discovery_port))
 
+    # Sendet eine JOIN-Nachricht an alle Peers im Netzwerk
     def send_join(self):
         if not self.username:
             return
         self.send_udp_broadcast(f"JOIN {self.username} {self.chat_tcp_port}")
         self.send_to_all_known_peers_as_knowuser()
 
+    # Sendet eine LEAVE-Nachricht an alle Peers im Netzwerk
     def send_leave(self):
         self.send_udp_broadcast(f"LEAVE {self.username}")
 
+    # Fordert eine Discovery-Nachricht an, um andere Peers zu finden
     def request_discovery(self):
         self.send_join()
         time.sleep(0.05)
         self.send_udp_broadcast("WHO")
 
+    # Sendet eine KNOWUSERS-Nachricht an einen bestimmten Peer
     def send_knowusers(self, target_ip: str):
         users = self.ipc_handler.get_active_users(only_visible=True)
         if not users:
@@ -142,6 +148,7 @@ class DiscoveryService:
         except Exception as e:
             print(f"[Discovery] Fehler beim Senden von KNOWUSERS an {target_ip}:{target_port}: {e}")
 
+    # Sendet die KNOWUSERS-Nachricht an alle bekannten Peers, nachdem der Peer dem Chat beigetreten ist
     def send_to_all_known_peers_as_knowuser(self):
         """Wird nach JOIN verwendet, um aktiv an andere Peers KNOWUSERS zu schicken"""
         users = self.ipc_handler.get_active_users(only_visible=True)
