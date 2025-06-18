@@ -85,7 +85,7 @@ class DiscoveryService:
                     self.ipc_handler.remove_user_by_name(peer)
                     self.ipc_handler.send_message({
                         'type': 'system',
-                        'content': f"{peer} hat den Chat verlassen.",
+                        'content': f"LEAVE {peer}",
                         'timestamp': time.time()
                     })
 
