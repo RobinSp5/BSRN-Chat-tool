@@ -55,6 +55,7 @@ class CLI:
                     self.autoreply_active = False
                     self.ipc_handler.set_visibility(True)
                     print("🟢 Du bist wieder aktiv.")
+                    self.discovery_service.request_discovery() # Discovery erneut anfordern
                 if not user_input:
                     continue
                 if not user_input.startswith("/"):
@@ -72,6 +73,7 @@ class CLI:
                 self.ipc_handler.set_visibility(False)
                 print("\n🟡 Du bist inaktiv – Autoreply-Modus aktiviert.")
                 print("> ", end="", flush=True)
+                self.discovery_service.request_discovery()
             time.sleep(1)
 
     def process_command(self, command: str):
@@ -104,6 +106,7 @@ class CLI:
 
             elif cmd == "msg":
                 if len(parts) >= 2:
+                    self.discovery_service.request_discovery() # Discovery erneut anfordern
                     self.send_broadcast_message(" ".join(parts[1:]))
                 else:
                     print("Verwendung: /msg <nachricht>")

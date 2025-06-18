@@ -15,7 +15,7 @@ class ChatClient:
             encoded = slcp_line.encode("utf-8")
 
             if len(encoded) > 512:
-                print(f"❌ Nachricht zu lang ({len(encoded)} Bytes). Maximal erlaubt: 512 Bytes.")
+                print(f"Nachricht zu lang ({len(encoded)} Bytes). Maximal erlaubt: 512 Bytes.")
                 return False
 
             with socket.create_connection((target_ip, target_port), timeout=self.config['system']['socket_timeout']) as sock:
