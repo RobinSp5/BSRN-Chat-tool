@@ -145,47 +145,77 @@ class CLI:
                 for key, value in self.config.items():
                     print(f"  {key}: {value}")
 
-            # Bearbeitet die Konfiguration, wenn der Befehl /edit_config <key> <value> eingegeben wird
-            elif cmd == "edit_config":
-                if len(parts) >= 3:
-                    key = parts[1]
-                    value = " ".join(parts[2:])
-                    if "." in key:
-                        config_section, config_key = key.split(".", 1)
-                        if config_section in self.config:
-                            if not isinstance(self.config[config_section], dict):
-                                self.config[config_section] = {}
-                            self.config[config_section][config_key] = value
-                            print(f"Konfiguration aktualisiert: {key} = {value}")
-                            # Handle-Anpassung, falls user.handle geändert wurde
-                            if config_section == "user" and config_key == "handle":
-                                old = self.username
-                                self.username = value
-                                self.chat_client.username = value
-                                self.discovery.username = value
-                                print(f"Handle geändert: {old} → {value}")
-                        else:
-                            print(f"Konfigurationssektion '{config_section}' nicht gefunden.")
-                    else:
-                        self.config[key] = value
-                        print(f"Konfiguration aktualisiert: {key} = {value}")
-                        # Handle-Anpassung, falls top-level handle geändert wurde
-                        if key == "handle":
-                            old = self.username
-                            self.username = value
-                            self.chat_client.username = value
-                            self.discovery.username = value
-                            print(f"Handle geändert: {old} → {value}")
 
-                    try:
-                        config_path = "config.toml"
-                        with open(config_path, "w") as f:
-                            toml.dump(self.config, f)
-                        print(f"Konfiguration in {config_path} gespeichert.")
-                    except Exception as e:
-                        print(f"Fehler beim Speichern der Konfiguration: {e}")
+            # Bearbeitet die toml Datei
+            # Der Benutzer kann nur das Feld "handle" bearbeiten
+            elif cmd == "edit_config":
+                if len(parts) == 3:
+                    key = parts[1].strip()
+                    value = parts[2].strip()
+                    
+                    # Only allow editing the handle field
+                    if key == "handle":
+                        try:
+                            # Update the in-memory config
+                            self.config[key] = value
+                            
+                            # Update the username in chat_client and discovery_service immediately
+                            old_username = self.chat_client.username
+                            
+                            # Update the config.toml file
+                            config_file = "config.toml"  # Adjust path if needed
+                            
+                            # Read the current config file
+                            with open(config_file, 'r', encoding='utf-8') as f:
+                                config_data = toml.load(f)
+                            
+                            # Update only the handle field
+                            config_data['handle'] = value
+                            
+                            # Write back to file
+                            with open(config_file, 'w', encoding='utf-8') as f:
+                                toml.dump(config_data, f)
+                            
+                            print(f"Konfiguration aktualisiert: {key} = {value}")
+                            if old_username:
+                                print(f"Username wird geändert von '{old_username}' zu '{value}'...")
+                                # First send leave with old name to remove it from other clients
+                                self.discovery_service.send_leave()
+                                print(f"LEAVE gesendet für '{old_username}'")
+                                time.sleep(1)  # Give time for LEAVE to propagate
+                                
+                                # Now update the usernames
+                                self.chat_client.username = value
+                                self.discovery_service.username = value
+                                
+                                # Clear local user list and remove old username
+                                #self.ipc_handler.remove_user(old_username)
+                                self.ipc_handler.remove_user_by_name(old_username)
+                                
+                                # Then rejoin with new name
+                                self.discovery_service.send_join()
+                                local_ip = self.chat_client.config['network'].get('local_ip', '127.0.0.1')
+                                tcp_port = self.chat_client.config['network'].get('chat_port', 5001)
+                                print(f"JOIN gesendet für '{value}' - Username-Wechsel abgeschlossen!")
+                                
+                                # Force refresh of user list
+                                time.sleep(0.5)
+                                self.discovery_service.request_discovery()
+                            else:
+                                # No old username, just set the new one
+                                self.chat_client.username = value
+                                self.discovery_service.username = value
+                                print("Username gesetzt - sofort aktiv!")
+                            
+                        except FileNotFoundError:
+                            print("Fehler: config.toml nicht gefunden.")
+                        except Exception as e:
+                            print(f"Fehler beim Speichern der Konfiguration: {e}")
+                    else:
+                        print("Nur das Feld 'handle' kann bearbeitet werden.")
+                        print("Verwendung: /edit_config handle <neuer_username>")
                 else:
-                    print("Verwendung: /edit_config <key> <value>")
+                    print("Verwendung: /edit_config handle <neuer_username>")
 
             elif cmd == "autoreply":
                 if self.autoreply_active:
