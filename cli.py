@@ -47,6 +47,7 @@ class CLI:
         print("  /msg <text>          - Nachricht an alle senden")
         print("  /pm <user> <msg>     - Private Nachricht senden")
         print("  /img <user> <pfad>   - Bild privat senden")
+        print("  /autoreply           - Autoreply-Modus aktivieren/deaktivieren")
         print("  /show_config         - Aktuelle Konfiguration anzeigen")
         print("  /edit_config <key> <value> - Konfiguration bearbeiten")
         print("  /quit                - Chat verlassen und beenden")
@@ -185,6 +186,17 @@ class CLI:
                         print(f"Fehler beim Speichern der Konfiguration: {e}")
                 else:
                     print("Verwendung: /edit_config <key> <value>")
+
+            elif cmd == "autoreply":
+                if self.autoreply_active:
+                    self.autoreply_active = False
+                    self.ipc_handler.set_visibility(True)
+                    print("🟢 Autoreply-Modus deaktiviert.")
+                else:
+                    self.autoreply_active = True
+                    self.ipc_handler.set_visibility(False)
+                    print("🟡 Autoreply-Modus aktiviert. Du bist jetzt inaktiv.")
+                    self.discovery_service.request_discovery()
 
 
             else:
