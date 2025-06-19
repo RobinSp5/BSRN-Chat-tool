@@ -153,68 +153,67 @@ class CLI:
                     key = parts[1].strip()
                     value = parts[2].strip()
                     
-                    # Only allow editing the handle field
+                    # Erlaubt nur das Bearbeiten des "handle"-Feldes
                     if key == "handle":
                         try:
-                            # Update the in-memory config
+                            # Update
                             self.config[key] = value
                             
-                            # Update the username in chat_client and discovery_service immediately
+                            # Updated den username im chat_client und discovery_service
                             old_username = self.chat_client.username
                             
-                            # Update the config.toml file
+                            # Updated das config.toml file
                             config_file = "config.toml"  # Adjust path if needed
                             
-                            # Read the current config file
+                            # Liest das aktuelle config file
                             with open(config_file, 'r', encoding='utf-8') as f:
                                 config_data = toml.load(f)
                             
-                            # Update only the handle field
+                            # Update nur den Wert im handle Feld
                             config_data['handle'] = value
                             
-                            # Write back to file
+                            # Schreibt die aktualisierte Konfiguration zurück in die Datei
                             with open(config_file, 'w', encoding='utf-8') as f:
                                 toml.dump(config_data, f)
                             
                             print(f"Konfiguration aktualisiert: {key} = {value}")
                             if old_username:
                                 print(f"Username wird geändert von '{old_username}' zu '{value}'...")
-                                # First send leave with old name to remove it from other clients
+                                # Sendet LEAVE, um den alten Namen zu verlassen
                                 self.discovery_service.send_leave()
                                 print(f"LEAVE gesendet für '{old_username}'")
-                                time.sleep(1)  # Give time for LEAVE to propagate
+                                time.sleep(1)  # Pause
                                 
-                                # Now update the usernames
+                                # Neue Username setzen
                                 self.chat_client.username = value
                                 self.discovery_service.username = value
                                 
-                                # Clear local user list and remove old username
-                                #self.ipc_handler.remove_user(old_username)
+                                # Loescht die lokale User-Informationen
                                 self.ipc_handler.remove_user_by_name(old_username)
                                 
-                                # Then rejoin with new name
+                                # Neu joinen mit neuen Username
                                 self.discovery_service.send_join()
                                 local_ip = self.chat_client.config['network'].get('local_ip', '127.0.0.1')
                                 tcp_port = self.chat_client.config['network'].get('chat_port', 5001)
                                 print(f"JOIN gesendet für '{value}' - Username-Wechsel abgeschlossen!")
                                 
-                                # Force refresh of user list
+                                # Discovery Service anfordern, um andere Nutzer zu benachrichtigen
                                 time.sleep(0.5)
                                 self.discovery_service.request_discovery()
                             else:
-                                # No old username, just set the new one
+                                #
                                 self.chat_client.username = value
                                 self.discovery_service.username = value
                                 print("Username gesetzt - sofort aktiv!")
                             
-                        except FileNotFoundError:
+                        except FileNotFoundError: # FileNotFoundError wird geworfen, wenn die config.toml Datei nicht gefunden wird
                             print("Fehler: config.toml nicht gefunden.")
-                        except Exception as e:
+                        except Exception as e: # Allgemeiner Fehler beim Speichern der Konfiguration
                             print(f"Fehler beim Speichern der Konfiguration: {e}")
-                    else:
+                    else:# Nur das Feld "handle" kann bearbeitet werden
                         print("Nur das Feld 'handle' kann bearbeitet werden.")
                         print("Verwendung: /edit_config handle <neuer_username>")
-                else:
+                else: # Wenn die Anzahl der Argumente nicht 3 ist, wird eine Fehlermeldung ausgegeben
                     print("Verwendung: /edit_config handle <neuer_username>")
 
             elif cmd == "autoreply":
