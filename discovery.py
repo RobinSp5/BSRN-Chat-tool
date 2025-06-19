@@ -2,6 +2,7 @@ import socket
 import threading
 import time
 from typing import Dict, Any
+import toml
 
 
 class DiscoveryService:
@@ -169,3 +170,72 @@ class DiscoveryService:
                     sock.sendall(msg.encode("utf-8"))
             except Exception as e:
                 print(f"[Discovery] Fehler bei aktivem Senden an {name}: {e}")
+
+
+    def change_handle(self, new_username: str, config_file_path: str = "config.toml"):
+            """
+            Ändert den Handle/Username des aktuellen Benutzers und führt alle notwendigen
+            Discovery-Operationen durch (LEAVE, JOIN, etc.)
+            
+            Args:
+                new_username (str): Der neue Benutzername
+                config_file_path (str): Pfad zur config.toml Datei
+            
+            Returns:
+                bool: True wenn erfolgreich, False bei Fehler
+            """
+            if not new_username or not new_username.strip():
+                print("[Discovery] Fehler: Neuer Username darf nicht leer sein.")
+                return False
+            
+            old_username = self.username
+            new_username = new_username.strip()
+            
+            try:
+                # 1. Config-Datei aktualisieren
+                try:
+                    with open(config_file_path, 'r', encoding='utf-8') as f:
+                        config_data = toml.load(f)
+                    
+                    config_data['handle'] = new_username
+                    
+                    with open(config_file_path, 'w', encoding='utf-8') as f:
+                        toml.dump(config_data, f)
+                        
+                    print(f"[Discovery] config.toml aktualisiert: handle = {new_username}")
+                except Exception as e:
+                    print(f"[Discovery] Fehler beim Speichern der config.toml: {e}")
+                    return False
+                
+                # 2. Wenn bereits ein alter Username existiert, LEAVE senden
+                if old_username:
+                    print(f"[Discovery] Username wird geändert von '{old_username}' zu '{new_username}'...")
+                    self.send_leave()
+                    print(f"[Discovery] LEAVE gesendet für '{old_username}'")
+                    time.sleep(1)  # Kurze Pause
+                    
+                    # Alten User aus der lokalen Liste entfernen
+                    self.ipc_handler.remove_user_by_name(old_username)
+                
+                # 3. Neuen Username setzen
+                self.username = new_username
+                
+                # 4. JOIN mit neuem Username senden
+                self.send_join()
+                
+                # 5. Sich selbst zur User-Liste hinzufügen
+                local_ip = self.config['network'].get('local_ip', '127.0.0.1')
+                tcp_port = self.chat_tcp_port
+                self.ipc_handler.update_user_list(new_username, local_ip, tcp_port, time.time())
+                
+                print(f"[Discovery] JOIN gesendet für '{new_username}' - Username-Wechsel abgeschlossen!")
+                
+                # 6. Discovery-Request senden, um andere Nutzer zu benachrichtigen
+                time.sleep(0.5)
+                self.request_discovery()
+                
+                return True
+                
+            except Exception as e:
+                print(f"[Discovery] Fehler beim Ändern des Handles: {e}")
+                return False

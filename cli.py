@@ -96,20 +96,46 @@ class CLI:
                 self.show_help() #Ruft die Hilfsfunktion auf, um die verfügbaren Befehle anzuzeigen
 
             elif cmd == "join":
-                #Teilt den Befehl in Teile auf und prüft, ob genau 2 Argumente vorhanden sind
                 if len(parts) < 2:
-                    print("Verwendung: /join <benutzername>")
-                    return
+                    print("❌ Fehler: Du musst einen Benutzernamen angeben. Beispiel: /join Alice")
+                    return  # KORREKTUR: return statt continue
+
+                new_username = parts[1].strip()
+                if not new_username:
+                    print("❌ Fehler: Der Benutzername darf nicht leer sein.")
+                    return  # KORREKTUR: return statt continue
+
+                print(f"--- [JOIN Prozess für '{new_username}'] ---")
+
+                # Schritt 1: Konfiguration im Speicher aktualisieren
+                self.config['handle'] = new_username
+                print(f"1. Speicher aktualisiert: handle = '{self.config.get('handle')}'")
+
+                # Schritt 2: Konfiguration in die Datei config.toml schreiben
+                config_path = "config.toml"
+                try:
+                    print(f"2. Versuche, in '{config_path}' zu schreiben...")
+                    with open(config_path, "w") as f:
+                        toml.dump(self.config, f)
+                    print(f"   ✅ Erfolgreich in Datei gespeichert.")
+                except Exception as e:
+                    print(f"   ‼️ FEHLER BEIM SPEICHERN DER DATEI: {e}")
+                    print("   Der Beitritt wird abgebrochen. Bitte prüfe die Dateiberechtigungen.")
+                    return  # KORREKTUR: return statt continue
+
+                # Schritt 3: Interne Services mit neuem Namen aktualisieren
+                self.chat_client.username = new_username
+                self.discovery_service.username = new_username
+                print("3. Interne Services aktualisiert.")
+
+                # Schritt 4: JOIN-Nachricht senden
+                if not self.discovery_service.running:
+                    self.discovery_service.start()
                 
-                name = parts[1].strip()
-                #Prüft, ob das zweite Argument (Name) leer ist
-                if not name:
-                    print("Name darf nicht leer sein.")
-                    return
-                self.chat_client.username = name
-                self.discovery_service.username = name
                 self.discovery_service.send_join()
-                print(f"Du hast dich erfolgreich als \"{name}\" im Chat angemeldet.")
+                print("4. JOIN-Nachricht gesendet.")
+                print(f"--- [JOIN Prozess für '{new_username}' abgeschlossen] ---")
+                print(f"Du bist jetzt als '{new_username}' im Chat aktiv.")
 
             elif cmd == "who":
                 self.discovery_service.request_discovery()
@@ -149,79 +175,26 @@ class CLI:
             # Bearbeitet die toml Datei
             # Der Benutzer kann nur das Feld "handle" bearbeiten
             elif cmd == "edit_config":
-                if len(parts) == 3:
-                    key = parts[1].strip()
-                    value = parts[2].strip()
-                    
-                    # Erlaubt nur das Bearbeiten des "handle"-Feldes
-                    if key == "handle":
-                        try:
-                            # Update
-                            self.config[key] = value
-                            
-                            # Updated den username im chat_client und discovery_service
-                            old_username = self.chat_client.username
-                            
-                            # Updated das config.toml file
-                            config_file = "config.toml"  # Adjust path if needed
-                            
-                            # Liest das aktuelle config file
-                            with open(config_file, 'r', encoding='utf-8') as f:
-                                config_data = toml.load(f)
-                            
-                            # Update nur den Wert im handle Feld
-                            config_data['handle'] = value
-                            
-                            # Schreibt die aktualisierte Konfiguration zurück in die Datei
-                            with open(config_file, 'w', encoding='utf-8') as f:
-                                toml.dump(config_data, f)
-                            
-                            print(f"Konfiguration aktualisiert: {key} = {value}")
-                            if old_username:
-                                print(f"Username wird geändert von '{old_username}' zu '{value}'...")
-                                # Sendet LEAVE, um den alten Namen zu verlassen
-                                self.discovery_service.send_leave()
-                                print(f"LEAVE gesendet für '{old_username}'")
-                                time.sleep(1)  # Pause
-                                
-                                # Neue Username setzen
+                    if len(parts) == 3:
+                        key = parts[1].strip()
+                        value = parts[2].strip()
+                        
+                        # Erlaubt nur das Bearbeiten des "handle"-Feldes
+                        if key == "handle":
+                            # Verwende die neue change_handle Funktion aus dem DiscoveryService
+                            success = self.discovery_service.change_handle(value)
+                            if success:
+                                # Username auch im chat_client aktualisieren
                                 self.chat_client.username = value
-                                self.discovery_service.username = value
-                                
-                                # Loescht die lokale User-Informationen
-                                self.ipc_handler.remove_user_by_name(old_username)
-                                
-                                # Neu joinen mit neuen Username
-                                self.discovery_service.send_join()
-                                local_ip = self.chat_client.config['network'].get('local_ip', '127.0.0.1')
-                                tcp_port = self.chat_client.config['network'].get('chat_port', 5001)
-
-                                # Eigenen neuen Username zur Liste hinzufügen
-                                # Wurde vorher nicht angezeigt wenn man selbst den Namen gaendert hat
-                                # und dann /who gemacht hat
-                                self.ipc_handler.update_user_list(value, local_ip, tcp_port, time.time())
-
-
-                                print(f"JOIN gesendet für '{value}' - Username-Wechsel abgeschlossen!")
-                                
-                                # Discovery Service anfordern, um andere Nutzer zu benachrichtigen
-                                time.sleep(0.5)
-                                self.discovery_service.request_discovery()
+                                self.config['handle'] = value
+                                print(f"Handle erfolgreich geändert zu: {value}")
                             else:
-                                #
-                                self.chat_client.username = value
-                                self.discovery_service.username = value
-                                print("Username gesetzt - sofort aktiv!")
-                            
-                        except FileNotFoundError: # FileNotFoundError wird geworfen, wenn die config.toml Datei nicht gefunden wird
-                            print("Fehler: config.toml nicht gefunden.")
-                        except Exception as e: # Allgemeiner Fehler beim Speichern der Konfiguration
-                            print(f"Fehler beim Speichern der Konfiguration: {e}")
-                    else:# Nur das Feld "handle" kann bearbeitet werden
-                        print("Nur das Feld 'handle' kann bearbeitet werden.")
+                                print("Fehler beim Ändern des Handles.")
+                        else:
+                            print("Nur das Feld 'handle' kann bearbeitet werden.")
+                            print("Verwendung: /edit_config handle <neuer_username>")
+                    else:
                         print("Verwendung: /edit_config handle <neuer_username>")
-                else: # Wenn die Anzahl der Argumente nicht 3 ist, wird eine Fehlermeldung ausgegeben
-                    print("Verwendung: /edit_config handle <neuer_username>")
 
             elif cmd == "autoreply":
                 if self.autoreply_active:
@@ -344,5 +317,99 @@ class CLI:
         elif msg_type == 'system':
             print(f"\n[{time_str}] SYSTEM: {message.get('content')}")
         print("> ", end="", flush=True)
+
+    def handle_command(self, user_input: str):
+        """
+        Diese Methode verarbeitet ALLE Benutzereingaben.
+        Sie ist so aufgebaut, dass Zustandsfehler vermieden werden.
+        """
+        parts = user_input.split(" ", 1)
+        cmd = parts[0].lower()
+
+        if cmd == "/join":
+            if len(parts) < 2 or not parts[1].strip():
+                print("\nFEHLER: Du musst einen Namen angeben. Beispiel: /join Peter\n")
+                return
+
+            new_username = parts[1].strip()
+            print(f"\n--- [START] Ändere Namen zu '{new_username}' ---")
+
+            # SCHRITT 1: Lade die Konfiguration IMMER frisch von der Festplatte.
+            # Das verhindert, dass wir mit alten Daten arbeiten.
+            config_path = "config.toml"
+            try:
+                with open(config_path, "r") as f:
+                    current_config = toml.load(f)
+                print("1. Aktuelle config.toml erfolgreich geladen.")
+            except Exception as e:
+                print(f"‼FEHLER: Konnte '{config_path}' nicht lesen: {e}")
+                return
+
+            # SCHRITT 2: Ändere den Namen im frisch geladenen Wörterbuch.
+            current_config['handle'] = new_username
+            print(f"2. Name im Speicher geändert auf '{current_config.get('handle')}'.")
+
+            # SCHRITT 3: Schreibe das geänderte Wörterbuch zurück in die Datei.
+            try:
+                with open(config_path, "w") as f:
+                    toml.dump(current_config, f)
+                print(f"3. Änderungen wurden in '{config_path}' zurückgeschrieben.")
+            except Exception as e:
+                print(f"‼FEHLER: Konnte '{config_path}' nicht schreiben: {e}")
+                return
+
+            # SCHRITT 4: Aktualisiere die Konfiguration und den Namen in ALLEN laufenden Teilen des Programms.
+            # Dies ist der entscheidende Schritt, um alle Teile zu synchronisieren.
+            self.config = current_config
+            self.chat_client.username = new_username
+            self.discovery_service.username = new_username
+            print("4. Laufende Programmteile wurden mit dem neuen Namen aktualisiert.")
+
+            # SCHRITT 5: Sende die JOIN-Nachricht.
+            if not self.discovery_service.running:
+                self.discovery_service.start()
+            self.discovery_service.send_join()
+            print(f"5. JOIN als '{new_username}' gesendet.")
+            print(f"--- [ENDE] Du bist jetzt als '{new_username}' im Chat aktiv. ---\n")
+
+        elif cmd == "/show_config":
+            print("\n--- Aktuelle Konfiguration (aus dem Speicher der CLI) ---")
+            print(self.config)
+            print("--------------------------------------------------------\n")
+
+        elif cmd == "/quit":
+            print("Beende das Programm...")
+            if self.discovery_service.running:
+                self.discovery_service.send_leave()
+                self.discovery_service.stop()
+            self.running = False # Beendet die Hauptschleife
+        
+        # Hier können weitere Befehle (elif cmd == "/who": ...) hinzugefügt werden.
+        else:
+            # Behandelt normale Chat-Nachrichten oder unbekannte Befehle
+            if user_input.startswith('/'):
+                print(f"Unbekannter Befehl: {cmd}")
+            else:
+                # Logik für das Senden von Broadcast-Nachrichten (/msg)
+                print("Broadcast-Funktion hier einfügen.")
+
+
+    def run(self):
+        """
+        Dies ist die Hauptschleife der CLI.
+        Sie ruft für jede Eingabe die neue handle_command Methode auf.
+        """
+        self.running = True
+        # Hier werden vermutlich deine Threads gestartet...
+        # self.start_message_display_thread()
+
+        while self.running:
+            try:
+                user_input = input("> ").strip()
+                if user_input:
+                    self.handle_command(user_input)
+            except KeyboardInterrupt:
+                self.handle_command("/quit")
+        print("Programm beendet.")
 
 
