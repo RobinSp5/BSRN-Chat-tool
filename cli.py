@@ -227,12 +227,26 @@ class CLI:
 
     def show_active_users(self):
         users = self.ipc_handler.get_active_users()
+
+        # Den eigenen Nutzer manuell eintragen
+        own_name = self.chat_client.username
+        if own_name and own_name not in users:
+            users[own_name] = {
+            "ip": self.chat_client.config["network"].get("local_ip", "127.0.0.1"),
+            "tcp_port": self.chat_client.config["network"].get("chat_port", 5001),
+            "status": "online",
+            "last_seen": time.time(),
+            "visible": True
+        }
+
         if not users:
             print("Keine Nutzer bekannt.")
             return
+
         print("Aktive Nutzer:")
         for name, info in users.items():
             print(f"  {name} @ {info['ip']}:{info['tcp_port']}")
+
 
     def send_broadcast_message(self, message: str):
         if not self.chat_client.username:
