@@ -28,6 +28,7 @@ class CLI:
     def stop(self):
         self.running = False
 
+    #Zeigt die Willkommensnachricht an, wenn der Chat via CLI gestartet wird
     def show_welcome(self):
         print("=" * 50)
         print("     Simple Local Chat (SLCP)")
@@ -50,6 +51,7 @@ class CLI:
         print("  /edit_config <key> <value> - Konfiguration bearbeiten")
         print("  /quit                - Chat verlassen und beenden")
 
+    #Haupt-Loop, die die Eingaben des Nutzers verarbeitet
     def command_loop(self):
         while self.running:
             try:
@@ -70,6 +72,8 @@ class CLI:
                 print("\nChat wird beendet.")
                 self.running = False
 
+    # Überwacht die Inaktivität des Nutzers und aktiviert den Autoreply-Modus
+    # Wenn der Nutzer länger als inactivity_timeout Sekunden inaktiv ist,
     def inactivity_monitor(self):
         while self.running:
             if time.time() - self.last_input_time > self.inactivity_timeout and not self.autoreply_active:
@@ -77,7 +81,7 @@ class CLI:
                 self.ipc_handler.set_visibility(False)
                 print("\n🟡 Du bist inaktiv – Autoreply-Modus aktiviert.")
                 print("> ", end="", flush=True)
-                self.discovery_service.request_discovery()
+                self.discovery_service.request_discovery() # Sendet eine WHO-Anfrage an den Discovery Dienst, um aktive Nutzer zu finden
             time.sleep(1)
 
     def process_command(self, command: str):
@@ -88,13 +92,16 @@ class CLI:
             cmd = parts[0].lower()
 
             if cmd == "help":
-                self.show_help()
+                self.show_help() #Ruft die Hilfsfunktion auf, um die verfügbaren Befehle anzuzeigen
 
             elif cmd == "join":
+                #Teilt den Befehl in Teile auf und prüft, ob genau 2 Argumente vorhanden sind
                 if len(parts) < 2:
                     print("Verwendung: /join <benutzername>")
                     return
+                
                 name = parts[1].strip()
+                #Prüft, ob das zweite Argument (Name) leer ist
                 if not name:
                     print("Name darf nicht leer sein.")
                     return
@@ -137,6 +144,7 @@ class CLI:
                 for key, value in self.config.items():
                     print(f"  {key}: {value}")
 
+            # Bearbeitet die Konfiguration, wenn der Befehl /edit_config <key> <value> eingegeben wird
             elif cmd == "edit_config":
                 if len(parts) >= 3:
                     key = parts[1]
