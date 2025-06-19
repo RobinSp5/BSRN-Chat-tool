@@ -50,9 +50,6 @@ class ChatGUI:
         button_frame = ttk.Frame(main_frame)
         button_frame.grid(row=2, column=1, columnspan=3, pady=(0, 5), sticky=(tk.W, tk.E))
 
-        self.connect_button = ttk.Button(button_frame, text="Verbinden", command=self.connect_to_server)
-        self.connect_button.pack(side=tk.LEFT, padx=(0, 5))
-
         self.clear_button = ttk.Button(button_frame, text="Chat löschen", command=self.clear_chat)
         self.clear_button.pack(side=tk.LEFT, padx=(0, 5))
 
@@ -122,7 +119,13 @@ class ChatGUI:
 
         self.discovery.start()  # Discovery-Service starten
         self.is_connected = True  # Status der Verbindung
+        self.discovery.send_join()
+        self.display_system_message(f"JOIN als '{self.username}' versendet")
+
+        time.sleep(0.5)  # Kurze Pause, um sicherzustellen, dass Discovery gestartet ist
         self.discovery.request_discovery()  # Discovery anfordern
+
+
         
         # Starte die Nutzer-Aktualisierung
         self.start_user_update_loop()
@@ -313,20 +316,6 @@ class ChatGUI:
         
         # Eingabe leeren
         self.message_entry.delete(0, tk.END)
-
-    # Verbinden-Button - mit Username-Eingabe
-    def connect_to_server(self):
-        self.discovery.start()
-
-        time.sleep(0.5)  # Kurze Pause, um sicherzustellen, dass Discovery gestartet ist
-
-        # JOIN mit (neuem) Username senden
-        self.discovery.send_join()
-        self.display_system_message(f"JOIN als '{self.username}' versendet")
-        
-        # Nutzerliste sofort aktualisieren
-        self.discovery.request_discovery()
-        self.update_active_users()
 
 
     #Aktualisiern-Button
