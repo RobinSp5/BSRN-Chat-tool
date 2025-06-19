@@ -172,29 +172,36 @@ class CLI:
                     print(f"  {key}: {value}")
 
 
-            # Bearbeitet die toml Datei
-            # Der Benutzer kann nur das Feld "handle" bearbeiten
+                       # Bearbeitet die toml Datei
+            # Der Benutzer kann nur das Feld "handle" oder "autoreply" bearbeiten
             elif cmd == "edit_config":
-                    if len(parts) == 3:
-                        key = parts[1].strip()
-                        value = parts[2].strip()
-                        
-                        # Erlaubt nur das Bearbeiten des "handle"-Feldes
-                        if key == "handle":
-                            # Verwende die neue change_handle Funktion aus dem DiscoveryService
-                            success = self.discovery_service.change_handle(value)
-                            if success:
-                                # Username auch im chat_client aktualisieren
-                                self.chat_client.username = value
-                                self.config['handle'] = value
-                                print(f"Handle erfolgreich geändert zu: {value}")
-                            else:
-                                print("Fehler beim Ändern des Handles.")
+                if len(parts) >= 3:
+                    key = parts[1].strip()
+                    value = " ".join(parts[2:]).strip()  # Damit auch mehrere Wörter erlaubt sind
+
+                    if key == "handle":
+                        success = self.discovery_service.change_handle(value)
+                        if success:
+                            self.chat_client.username = value
+                            self.config['handle'] = value
+                            print(f"Handle erfolgreich geändert zu: {value}")
                         else:
-                            print("Nur das Feld 'handle' kann bearbeitet werden.")
-                            print("Verwendung: /edit_config handle <neuer_username>")
+                            print("Fehler beim Ändern des Handles.")
+
+                    elif key == "autoreply":
+                        self.config.setdefault("system", {})["autoreply"] = value
+                        try:
+                            with open("config.toml", "w") as f:
+                                toml.dump(self.config, f)
+                            print(f"Autoreply-Nachricht aktualisiert auf: \"{value}\"")
+                        except Exception as e:
+                            print(f"Fehler beim Speichern: {e}")
+
                     else:
-                        print("Verwendung: /edit_config handle <neuer_username>")
+                        print("Nur 'handle' oder 'autoreply' können bearbeitet werden.")
+                        print("Verwendung: /edit_config autoreply <neue Nachricht>")
+                else:
+                    print("Verwendung: /edit_config <handle/autoreply> <neuer Wert>")
 
             elif cmd == "autoreply":
                 if self.autoreply_active:
@@ -207,9 +214,9 @@ class CLI:
                     print("🟡 Autoreply-Modus aktiviert. Du bist jetzt inaktiv.")
                     self.discovery_service.request_discovery()
 
-
             else:
                 print(f"Unbekannter Befehl: {cmd}")
+
 
         except Exception as e:
             print(f"Fehler beim Verarbeiten des Befehls: {e}")
