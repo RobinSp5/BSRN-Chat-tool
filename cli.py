@@ -34,17 +34,21 @@ class CLI:
         print("=" * 50)
         print("📢 Du bist aktuell nicht im Chat angemeldet.")
         print("Melde dich mit /join <benutzername> an.")
-        print("Verfügbare Befehle (alle mit '/'): ")
-        print("  /help           - Hilfe anzeigen")
-        print("  /join <name>    - Chat beitreten (JOIN)")
-        print("  /who            - Nutzer suchen (WHO)")
-        print("  /msg <text>     - Nachricht an alle senden")
-        print("  /pm <user> <msg>- Private Nachricht senden")
-        print("  /img <user> <pfad> - Bild privat senden")
-        print("  /show_config    - Aktuelle Konfiguration anzeigen")
+        self.show_help()
+
+    #Hilfsfunktion, um die Hilfe anzuzeigen
+    # Hier die allgemeine Hilfe bearbeiten
+    # Wird bei /help und bei initialem Start aufgerufen
+    def show_help(self):
+        print("Verfügbare Befehle:")
+        print("  /join <name>         - Chat beitreten")
+        print("  /who                 - Aktive Nutzer anzeigen")
+        print("  /msg <text>          - Nachricht an alle senden")
+        print("  /pm <user> <msg>     - Private Nachricht senden")
+        print("  /img <user> <pfad>   - Bild privat senden")
+        print("  /show_config         - Aktuelle Konfiguration anzeigen")
         print("  /edit_config <key> <value> - Konfiguration bearbeiten")
-        print("  /quit           - Chat verlassen")
-        print("-" * 50)
+        print("  /quit                - Chat verlassen und beenden")
 
     def command_loop(self):
         while self.running:
@@ -144,11 +148,25 @@ class CLI:
                                 self.config[config_section] = {}
                             self.config[config_section][config_key] = value
                             print(f"Konfiguration aktualisiert: {key} = {value}")
+                            # Handle-Anpassung, falls user.handle geändert wurde
+                            if config_section == "user" and config_key == "handle":
+                                old = self.username
+                                self.username = value
+                                self.chat_client.username = value
+                                self.discovery.username = value
+                                print(f"Handle geändert: {old} → {value}")
                         else:
                             print(f"Konfigurationssektion '{config_section}' nicht gefunden.")
                     else:
                         self.config[key] = value
                         print(f"Konfiguration aktualisiert: {key} = {value}")
+                        # Handle-Anpassung, falls top-level handle geändert wurde
+                        if key == "handle":
+                            old = self.username
+                            self.username = value
+                            self.chat_client.username = value
+                            self.discovery.username = value
+                            print(f"Handle geändert: {old} → {value}")
 
                     try:
                         config_path = "config.toml"
@@ -158,7 +176,8 @@ class CLI:
                     except Exception as e:
                         print(f"Fehler beim Speichern der Konfiguration: {e}")
                 else:
-                    print("Verwendung: /edit_config <schlüssel> <wert>")
+                    print("Verwendung: /edit_config <key> <value>")
+
 
             else:
                 print(f"Unbekannter Befehl: {cmd}")
@@ -269,3 +288,5 @@ class CLI:
         elif msg_type == 'system':
             print(f"\n[{time_str}] SYSTEM: {message.get('content')}")
         print("> ", end="", flush=True)
+
+
