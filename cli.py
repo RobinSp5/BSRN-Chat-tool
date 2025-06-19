@@ -97,44 +97,44 @@ class CLI:
 
             elif cmd == "join":
                 if len(parts) < 2:
-                    print("❌ Fehler: Du musst einen Benutzernamen angeben. Beispiel: /join Alice")
+                    print("Fehler: Du musst einen Benutzernamen angeben. Beispiel: /join Alice")
                     return  # KORREKTUR: return statt continue
 
                 new_username = parts[1].strip()
                 if not new_username:
-                    print("❌ Fehler: Der Benutzername darf nicht leer sein.")
+                    print("Fehler: Der Benutzername darf nicht leer sein.")
                     return  # KORREKTUR: return statt continue
 
-                print(f"--- [JOIN Prozess für '{new_username}'] ---")
+                #print(f"--- [JOIN Prozess für '{new_username}'] ---")
 
                 # Schritt 1: Konfiguration im Speicher aktualisieren
                 self.config['handle'] = new_username
-                print(f"1. Speicher aktualisiert: handle = '{self.config.get('handle')}'")
+                #print(f"1. Speicher aktualisiert: handle = '{self.config.get('handle')}'")
 
                 # Schritt 2: Konfiguration in die Datei config.toml schreiben
                 config_path = "config.toml"
                 try:
-                    print(f"2. Versuche, in '{config_path}' zu schreiben...")
+                    #print(f"2. Versuche, in '{config_path}' zu schreiben...")
                     with open(config_path, "w") as f:
                         toml.dump(self.config, f)
-                    print(f"   ✅ Erfolgreich in Datei gespeichert.")
+                    print(f"   Erfolgreich in Datei gespeichert.")
                 except Exception as e:
-                    print(f"   ‼️ FEHLER BEIM SPEICHERN DER DATEI: {e}")
+                    print(f"   ‼FEHLER BEIM SPEICHERN DER DATEI: {e}")
                     print("   Der Beitritt wird abgebrochen. Bitte prüfe die Dateiberechtigungen.")
                     return  # KORREKTUR: return statt continue
 
                 # Schritt 3: Interne Services mit neuem Namen aktualisieren
                 self.chat_client.username = new_username
                 self.discovery_service.username = new_username
-                print("3. Interne Services aktualisiert.")
+                #print("3. Interne Services aktualisiert.")
 
                 # Schritt 4: JOIN-Nachricht senden
                 if not self.discovery_service.running:
                     self.discovery_service.start()
                 
                 self.discovery_service.send_join()
-                print("4. JOIN-Nachricht gesendet.")
-                print(f"--- [JOIN Prozess für '{new_username}' abgeschlossen] ---")
+                print("JOIN-Nachricht gesendet.")
+                #print(f"--- [JOIN Prozess für '{new_username}' abgeschlossen] ---")
                 print(f"Du bist jetzt als '{new_username}' im Chat aktiv.")
 
             elif cmd == "who":

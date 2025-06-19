@@ -1,33 +1,17 @@
-# SLCP-Konfiguration für Simple Local Chat
-
-handle = "DefaultUser"  # Benutzername
+handle = "marcel"
 
 [network]
-# UDP-Port für Discovery-Dienst (laut SLCP-Vorgabe fest: 4000)
 whoisport = 4000
-
-# Lokaler UDP-Portbereich für Client → niedrigster freier wird verwendet (optional)
-port = [5000, 5010]
-
-# TCP-Port für den Chatserver (darf durch Programm überschrieben werden)
+port = [ 5000, 5010,]
 chat_port = 5001
-
-# Broadcast-Adresse für Discovery (Default: 255.255.255.255)
 broadcast_address = "255.255.255.255"
+local_ip = "10.10.10.68"
 
 [system]
-# Antwortnachricht im Autoreply-Modus
 autoreply = "Ich bin gerade nicht verfügbar."
-
-#Das Sorgt dafür, dass bilder automatisch, nachdem senden geöffnet werden dürfen
 image_autoview = true
-
-# Speicherort für empfangene Bilder
 imagepath = "images/"
-
-# Socket-Timeout in Sekunden (TCP/UDP-Verbindungen)
 socket_timeout = 5
 
 [user]
-# Maximale Bildgröße in Bytes (z. B. 1 MB)
 max_image_size = 5242880
