@@ -195,6 +195,13 @@ class CLI:
                                 self.discovery_service.send_join()
                                 local_ip = self.chat_client.config['network'].get('local_ip', '127.0.0.1')
                                 tcp_port = self.chat_client.config['network'].get('chat_port', 5001)
+
+                                # Eigenen neuen Username zur Liste hinzufügen
+                                # Wurde vorher nicht angezeigt wenn man selbst den Namen gaendert hat
+                                # und dann /who gemacht hat
+                                self.ipc_handler.update_user_list(value, local_ip, tcp_port, time.time())
+
+
                                 print(f"JOIN gesendet für '{value}' - Username-Wechsel abgeschlossen!")
                                 
                                 # Discovery Service anfordern, um andere Nutzer zu benachrichtigen
