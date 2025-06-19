@@ -15,7 +15,7 @@ from chat_server import ChatServer
 
 class ChatGUI:
     def __init__(self, root):
-        
+
         # Hier wird das Fenster zusammen gebaut via Tkinter
         # Alle Buttons werden definiert
         # Fenster-Einstellungen und auch die Box in welcher die aktiven Nutzer angezeigt werden
@@ -100,12 +100,18 @@ class ChatGUI:
                 self.username = 'DefaultUser'  # Fallback
                 print(f"handle nicht in config.toml gefunden. Verwende: {self.username}")
         
-        print(f"Verwende Username: {self.username}") # Terminal output für Debugging
+        #print(f"Verwende Username: {self.username}") # Terminal output für Debugging
+
+        self.username = None  # Initialisiere den Username
+        self.username_abfragen()  # Frage den Username ab
 
         # IPC-Handler und Discovery-Service initialisieren
         chat_tcp_port     = config["network"].get("chat_port", 5001)
         self.ipc_handler  = IPCHandler()
         self.discovery    = DiscoveryService(config, self.ipc_handler, self.username, chat_tcp_port)
+
+        # Autoreply standard deaktiviert
+        self.autoreply_active = False
         
         # Chat-Client initialisieren
         self.chat_client = ChatClient(config, self.username)
@@ -113,6 +119,10 @@ class ChatGUI:
         # Chat-Server initialisieren
         self.chat_server = ChatServer(config, self.ipc_handler)
         self.chat_server.start()
+
+        self.discovery.start()  # Discovery-Service starten
+        self.is_connected = True  # Status der Verbindung
+        self.discovery.request_discovery()  # Discovery anfordern
         
         # Starte die Nutzer-Aktualisierung
         self.start_user_update_loop()
@@ -130,21 +140,37 @@ class ChatGUI:
 
     # Aktualisiert die Liste der aktiven Nutzer
     def update_active_users(self):
+        """Aktualisiert die Liste der aktiven Nutzer"""
         # Liste leeren
         self.users_listbox.delete(0, tk.END)
 
-        # Eigenen Username immer zuerst anzeigen
-        self.users_listbox.insert(tk.END, f"{self.username} (Du) @ lokaler Client")
+        # ← FIX: Prüfen ob is_connected existiert
+        is_connected = getattr(self, 'is_connected', False)
 
+        # Eigenen Username anzeigen (wenn verbunden)
+        if is_connected:
+            local_ip = self.chat_client.config['network'].get('local_ip', 'localhost')
+            chat_port = self.chat_client.config['network'].get('chat_port', 5001)
+            self.users_listbox.insert(tk.END, f"{self.username} (Du) @ {local_ip}:{chat_port}")
+
+        # ← FIX: Nur aktive und erreichbare Nutzer anzeigen
         users = self.ipc_handler.get_active_users()
-        if not users:
-            self.users_listbox.insert(tk.END, "Keine anderen Nutzer bekannt")
-            return
-
-        # Andere Nutzer hinzufügen
+        active_users = []
+        
         for name, info in users.items():
-            # Eigenen Namen nicht doppelt anzeigen
             if name != self.username:
+                status = info.get('status', 'online')
+                last_seen = info.get('last_seen', 0)
+                current_time = time.time()
+                
+                # Nur Nutzer anzeigen die in den letzten 90 Sekunden aktiv waren
+                if current_time - last_seen < 90 and status == 'online':
+                    active_users.append((name, info))
+        
+        if not active_users:
+            self.users_listbox.insert(tk.END, "Keine anderen Nutzer online")
+        else:
+            for name, info in active_users:
                 user_display = f"{name} @ {info['ip']}:{info['tcp_port']}"
                 self.users_listbox.insert(tk.END, user_display)
 
@@ -222,6 +248,39 @@ class ChatGUI:
         self.chat_display.see(tk.END)
         self.chat_display.configure(state='disabled')
 
+    def username_abfragen(self):
+        new_username = simpledialog.askstring(
+            "Username eingeben",
+            "Bitte gib deinen Chat-Benutzernamen ein:",
+            parent=self.root,
+            initialvalue=getattr(self, "username", "")
+        )
+        if not new_username or not new_username.strip():
+            # kein Username → Abbruch
+            self.username = None
+            return
+        self.username = new_username.strip()
+        # DiscoveryService und ChatClient updaten, falls sie schon existieren
+        if hasattr(self, "chat_client"):
+            self.chat_client.username = self.username
+        if hasattr(self, "discovery"):
+            self.discovery.username = self.username
+            # handle in config.toml überschreiben
+            cfg_path = os.path.join(os.path.dirname(__file__), "config.toml")
+            # Je nach Schema: top-level handle oder unter [user]
+            try:
+                # wenn top-level
+                self.config['handle'] = self.username
+            except KeyError:
+                # fallback in [user]
+                self.config.setdefault('user', {})['handle'] = self.username
+            # config wieder speichern
+            with open(cfg_path, "w") as f:
+                toml.dump(self.config, f)
+
+            self.display_system_message(f"Username gesetzt: {self.username}")
+
+
 #-------------------------------------------------------------------------------------------------------------
 
     # Ab hier wird definiert was passiert,
@@ -261,39 +320,12 @@ class ChatGUI:
 
         time.sleep(0.5)  # Kurze Pause, um sicherzustellen, dass Discovery gestartet ist
 
-
-        self.discovery.request_discovery() # Discovery erneut anfordern
-        # Nach neuem Username fragen
-        new_username = simpledialog.askstring(
-            "Username ändern", 
-            f"Aktueller Username: {self.username}\nNeuen Username eingeben:",
-            initialvalue=self.username
-        )
-        
-        # Wenn kein Username eingegeben oder abgebrochen wurde
-        if not new_username or not new_username.strip():
-            self.display_system_message("Verbindung abgebrochen - kein Username eingegeben")
-            return
-        
-        # Username bereinigen (Leerzeichen entfernen)
-        new_username = new_username.strip()
-        
-        # Prüfen ob Username geändert wurde
-        if new_username != self.username:
-            old_username = self.username
-            self.username = new_username
-            
-            # Chat-Client und Discovery-Service mit neuem Username aktualisieren
-            self.chat_client.username = new_username
-            self.discovery.username = new_username
-            
-            self.display_system_message(f"Username geändert: {old_username} → {new_username}")
-        
         # JOIN mit (neuem) Username senden
         self.discovery.send_join()
         self.display_system_message(f"JOIN als '{self.username}' versendet")
         
         # Nutzerliste sofort aktualisieren
+        self.discovery.request_discovery()
         self.update_active_users()
 
 
