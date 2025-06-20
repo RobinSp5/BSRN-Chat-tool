@@ -11,7 +11,6 @@ class ChatClient:
 
     # Sendet eine SLCP-Nachricht über TCP
     def send_text_message(self, target_ip: str, target_port: int, target_handle: str, message: str) -> bool:
-        """Sendet eine SLCP-Textnachricht über TCP (max. 512 Bytes inklusive Header)"""
         try:
             # Prüfen, ob die Nachricht leer ist
             slcp_line = f"MSG {target_handle} {message}\n"
