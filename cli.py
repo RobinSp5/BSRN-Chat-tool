@@ -92,9 +92,11 @@ class CLI:
                 return
             cmd = parts[0].lower()
 
+            # Wenn /help aufgerufen wird
             if cmd == "help":
                 self.show_help() #Ruft die Hilfsfunktion auf, um die verfügbaren Befehle anzuzeigen
 
+            # Wenn /join aufgerufen wird
             elif cmd == "join":
                 if len(parts) < 2:
                     print("Fehler: Du musst einen Benutzernamen angeben. Beispiel: /join Alice")
@@ -137,11 +139,13 @@ class CLI:
                 #print(f"--- [JOIN Prozess für '{new_username}' abgeschlossen] ---")
                 print(f"Du bist jetzt als '{new_username}' im Chat aktiv.")
 
+            # Wenn /who aufgerufen wird
             elif cmd == "who":
                 self.discovery_service.request_discovery()
                 time.sleep(2)
                 self.show_active_users()
 
+            # Wenn /msg aufgerufen wird
             elif cmd == "msg":
                 if len(parts) >= 2:
                     self.discovery_service.request_discovery()
@@ -149,38 +153,44 @@ class CLI:
                 else:
                     print("Verwendung: /msg <nachricht>")
 
+            # Wenn /pm aufgerufen wird
             elif cmd == "pm":
                 if len(parts) >= 3:
                     self.send_private_message(parts[1], " ".join(parts[2:]))
                 else:
                     print("Verwendung: /pm <nutzer> <nachricht>")
 
+            # Wenn /img aufgerufen wird
             elif cmd == "img":
                 if len(parts) >= 3:
                     self.send_image_to_user(parts[1], " ".join(parts[2:]))
                 else:
                     print("Verwendung: /img <nutzer> <pfad>")
 
+            # Wenn /quit aufgerufen wird
             elif cmd == "quit":
                 if self.chat_client.username:
                     self.discovery_service.send_leave()
                 self.running = False
 
+            # Wenn /show_config aufgerufen wird
             elif cmd == "show_config":
                 print("Aktuelle Konfiguration:")
                 for key, value in self.config.items():
                     print(f"  {key}: {value}")
 
 
-                       # Bearbeitet die toml Datei
+            ## Wenn /edit_config aufgerufen wird
+            # Bearbeitet die toml Datei
             # Der Benutzer kann nur das Feld "handle" oder "autoreply" bearbeiten
             elif cmd == "edit_config":
                 if len(parts) >= 3:
                     key = parts[1].strip()
                     value = " ".join(parts[2:]).strip()  # Damit auch mehrere Wörter erlaubt sind
 
+                    #Wenn der Benutzer den Handle ändern möchte
                     if key == "handle":
-                        success = self.discovery_service.change_handle(value)
+                        success = self.discovery_service.change_handle(value) # change_Handle ist eine Methode im DiscoveryService, die den Handle ändert
                         if success:
                             self.chat_client.username = value
                             self.config['handle'] = value
@@ -188,6 +198,7 @@ class CLI:
                         else:
                             print("Fehler beim Ändern des Handles.")
 
+                    # Wenn der Benutzer die Autoreply-Nachricht ändern möchte
                     elif key == "autoreply":
                         self.config.setdefault("system", {})["autoreply"] = value
                         try:
@@ -197,21 +208,28 @@ class CLI:
                         except Exception as e:
                             print(f"Fehler beim Speichern: {e}")
 
+                    # Wenn der Benutzer einen ungültigen Schlüssel eingibt
+                    # Es ist nur handle oder autoreply erlaubt
                     else:
                         print("Nur 'handle' oder 'autoreply' können bearbeitet werden.")
                         print("Verwendung: /edit_config autoreply <neue Nachricht>")
                 else:
                     print("Verwendung: /edit_config <handle/autoreply> <neuer Wert>")
 
+            # Wenn /autoreply aufgerufen wird
+            # Aktiviert oder deaktiviert den Autoreply-Modus automatisch alternativ zum Timer
             elif cmd == "autoreply":
                 if self.autoreply_active:
+                     # Wenn der Autoreply-Modus bereits aktiv ist wird er deaktiviert
                     self.autoreply_active = False
                     self.ipc_handler.set_visibility(True)
-                    print("🟢 Autoreply-Modus deaktiviert.")
+                    print("🟢 Autoreply-Modus deaktiviert.") # Ausgabe für den User selbst
+
                 else:
-                    self.autoreply_active = True
+                    # Wenn der Autoreply-Modus nicht aktiv ist, wird er aktiviert
+                    self.autoreply_active = True #
                     self.ipc_handler.set_visibility(False)
-                    print("🟡 Autoreply-Modus aktiviert. Du bist jetzt inaktiv.")
+                    print("🟡 Autoreply-Modus aktiviert. Du bist jetzt inaktiv.") # Ausgabe für den User selbst
                     self.discovery_service.request_discovery()
 
             else:
@@ -221,6 +239,9 @@ class CLI:
         except Exception as e:
             print(f"Fehler beim Verarbeiten des Befehls: {e}")
 
+    # Hilfsfunktion, um die Hilfe anzuzeigen
+    # Wird bei /help und bei initialem Start aufgerufen
+    # Dient zur vereinfachung damit man bei Anpassungen nur hier die Hilfe ändern muss
     def show_help(self):
         print("Verfügbare Befehle:")
         print("  /join <name>         - JOIN senden (Chat beitreten)")
@@ -232,8 +253,9 @@ class CLI:
         print("  /edit_config <key> <value> - Konfiguration bearbeiten")
         print("  /quit                - LEAVE senden & beenden")
 
+    # Zeigt die aktiven Nutzer an
     def show_active_users(self):
-        users = self.ipc_handler.get_active_users()
+        users = self.ipc_handler.get_active_users() # Ruft die Methode get_active_users() aus dem IPC Handler auf
 
         # Den eigenen Nutzer manuell eintragen
         own_name = self.chat_client.username
@@ -246,23 +268,30 @@ class CLI:
             "visible": True
         }
 
+        # Wenn keine Nutzer bekannt sind, wird eine entsprechende Nachricht ausgegeben
         if not users:
             print("Keine Nutzer bekannt.")
             return
 
+        # Wenn Nutzer bekannt sind, werden sie aufgelistet
         print("Aktive Nutzer:")
         for name, info in users.items():
             print(f"  {name} @ {info['ip']}:{info['tcp_port']}")
 
-
+    # Sendet eine Broadcast-Nachricht an alle aktiven Nutzer
     def send_broadcast_message(self, message: str):
+
+        #Prüft ob der Nutzer selbst beigetreten ist
+        # Wenn nicht, wird eine entsprechende Nachricht ausgegeben
         if not self.chat_client.username:
             print("Bitte zuerst mit /join <name> beitreten.")
             return
+        
         users = self.ipc_handler.get_active_users()
         if not users:
             print("Keine Nutzer zum Senden.")
             return
+        
         sent = 0
         for name, info in users.items():
             if name != self.chat_client.username:
@@ -270,46 +299,68 @@ class CLI:
                     sent += 1
         print(f"Nachricht gesendet an {sent} / {len(users) - 1 if self.chat_client.username in users else len(users)}")
 
+    # Sendet eine private Nachricht an einen bestimmten Nutzer
     def send_private_message(self, username: str, message: str):
+        # Prüft ob der Nutzer selbst beigetreten ist
+        # Wenn nicht, wird eine entsprechende Nachricht ausgegeben
         if not self.chat_client.username:
             print("Bitte zuerst mit /join <name> beitreten.")
             return
-        users = self.ipc_handler.get_active_users()
+        
+        users = self.ipc_handler.get_active_users() # Ruft die Methode get_active_users() aus dem IPC Handler auf
         user = users.get(username)
         if not user:
-            print(f"Nutzer {username} nicht bekannt.")
+            print(f"Nutzer {username} nicht bekannt.") # Wenn der Nutzer nicht bekannt ist, dem eine DM geschickt werden soll
             return
+        
         success = self.chat_client.send_text_message(user['ip'], user['tcp_port'], username, message)
         if success:
+            # Erfolgreiches Senden der Nachricht
             print(f"[Du → {username}]: {message}")
         else:
+            # Fehler beim Senden der Nachricht
             print(f"Senden fehlgeschlagen an {username}.")
 
+    # Sendet ein Bild an einen bestimmten Nutzer
     def send_image_to_user(self, username: str, image_path: str):
+        # Prüft ob der Nutzer selbst beigetreten ist
+        # Wenn nicht, wird eine entsprechende Nachricht ausgegeben
         if not self.chat_client.username:
             print("Bitte zuerst mit /join <name> beitreten.")
             return
+        
+        # Prüft ob der Pfad zu einem Bild existiert
+        # Wenn nicht, wird eine entsprechende Nachricht ausgegeben
         if not os.path.isfile(image_path):
             print(f"Bild nicht gefunden: {image_path}")
             return
-        users = self.ipc_handler.get_active_users()
-        user = users.get(username)
+        
+        users = self.ipc_handler.get_active_users() # Ruft die Methode get_active_users() aus dem IPC Handler auf
+        user = users.get(username) # Ruft den Nutzer aus der Liste der aktiven Nutzer ab
+
+        # Wenn der Nutzer nicht bekannt ist, wird eine entsprechende Nachricht ausgegeben
         if not user:
             print(f"Nutzer {username} nicht bekannt.")
             return
         success = self.chat_client.send_image_message(user['ip'], user['tcp_port'], username, image_path)
+
         if success:
+            # Erfolgreiches Senden des Bildes
             print(f"[Bild → {username}]: {os.path.basename(image_path)} gesendet.")
+
         else:
+            # Fehler beim Senden des Bildes
             print(f"Senden des Bildes an {username} fehlgeschlagen.")
 
+    # Zeigt die Nachrichten an, die über den IPC-Handler empfangen werden
     def display_messages(self):
         while self.running:
             message = self.ipc_handler.get_message()
             if message:
                 self.show_message(message)
-            time.sleep(0.1)
+            time.sleep(0.1) # Kurze Pause, um die CPU-Auslastung zu reduzieren
 
+    #
     def show_message(self, message: Dict[str, Any]):
         msg_type = message.get('type')
         sender_ip = message.get('sender_ip', 'Unbekannt')
@@ -339,82 +390,87 @@ class CLI:
             print(f"\n[{time_str}] SYSTEM: {message.get('content')}")
         print("> ", end="", flush=True)
 
-    def handle_command(self, user_input: str):
-        """
-        Diese Methode verarbeitet ALLE Benutzereingaben.
-        Sie ist so aufgebaut, dass Zustandsfehler vermieden werden.
-        """
-        parts = user_input.split(" ", 1)
-        cmd = parts[0].lower()
 
-        if cmd == "/join":
-            if len(parts) < 2 or not parts[1].strip():
-                print("\nFEHLER: Du musst einen Namen angeben. Beispiel: /join Peter\n")
-                return
+    # Auskommentiertr Methode da sie nicht mehr benötigt wird
+    # Behalten wir nur für den Fall, dass wir sie später nocheinmal brauchen
 
-            new_username = parts[1].strip()
-            print(f"\n--- [START] Ändere Namen zu '{new_username}' ---")
+    # def handle_command(self, user_input: str):
+    #     """
+    #     Diese Methode verarbeitet ALLE Benutzereingaben.
+    #     Sie ist so aufgebaut, dass Zustandsfehler vermieden werden.
+    #     """
+    #     parts = user_input.split(" ", 1)
+    #     cmd = parts[0].lower()
 
-            # SCHRITT 1: Lade die Konfiguration IMMER frisch von der Festplatte.
-            # Das verhindert, dass wir mit alten Daten arbeiten.
-            config_path = "config.toml"
-            try:
-                with open(config_path, "r") as f:
-                    current_config = toml.load(f)
-                print("1. Aktuelle config.toml erfolgreich geladen.")
-            except Exception as e:
-                print(f"‼FEHLER: Konnte '{config_path}' nicht lesen: {e}")
-                return
+    #     if cmd == "/join":
+    #         if len(parts) < 2 or not parts[1].strip():
+    #             print("\nFEHLER: Du musst einen Namen angeben. Beispiel: /join Peter\n")
+    #             return
 
-            # SCHRITT 2: Ändere den Namen im frisch geladenen Wörterbuch.
-            current_config['handle'] = new_username
-            print(f"2. Name im Speicher geändert auf '{current_config.get('handle')}'.")
+    #         new_username = parts[1].strip()
+    #         print(f"\n--- [START] Ändere Namen zu '{new_username}' ---")
 
-            # SCHRITT 3: Schreibe das geänderte Wörterbuch zurück in die Datei.
-            try:
-                with open(config_path, "w") as f:
-                    toml.dump(current_config, f)
-                print(f"3. Änderungen wurden in '{config_path}' zurückgeschrieben.")
-            except Exception as e:
-                print(f"‼FEHLER: Konnte '{config_path}' nicht schreiben: {e}")
-                return
+    #         # SCHRITT 1: Lade die Konfiguration IMMER frisch von der Festplatte.
+    #         # Das verhindert, dass wir mit alten Daten arbeiten.
+    #         config_path = "config.toml"
+    #         try:
+    #             with open(config_path, "r") as f:
+    #                 current_config = toml.load(f)
+    #             print("1. Aktuelle config.toml erfolgreich geladen.")
+    #         except Exception as e:
+    #             print(f"‼FEHLER: Konnte '{config_path}' nicht lesen: {e}")
+    #             return
 
-            # SCHRITT 4: Aktualisiere die Konfiguration und den Namen in ALLEN laufenden Teilen des Programms.
-            # Dies ist der entscheidende Schritt, um alle Teile zu synchronisieren.
-            self.config = current_config
-            self.chat_client.username = new_username
-            self.discovery_service.username = new_username
-            print("4. Laufende Programmteile wurden mit dem neuen Namen aktualisiert.")
+    #         # SCHRITT 2: Ändere den Namen im frisch geladenen Wörterbuch.
+    #         current_config['handle'] = new_username
+    #         print(f"2. Name im Speicher geändert auf '{current_config.get('handle')}'.")
 
-            # SCHRITT 5: Sende die JOIN-Nachricht.
-            if not self.discovery_service.running:
-                self.discovery_service.start()
-            self.discovery_service.send_join()
-            print(f"5. JOIN als '{new_username}' gesendet.")
-            print(f"--- [ENDE] Du bist jetzt als '{new_username}' im Chat aktiv. ---\n")
+    #         # SCHRITT 3: Schreibe das geänderte Wörterbuch zurück in die Datei.
+    #         try:
+    #             with open(config_path, "w") as f:
+    #                 toml.dump(current_config, f)
+    #             print(f"3. Änderungen wurden in '{config_path}' zurückgeschrieben.")
+    #         except Exception as e:
+    #             print(f"‼FEHLER: Konnte '{config_path}' nicht schreiben: {e}")
+    #             return
 
-        elif cmd == "/show_config":
-            print("\n--- Aktuelle Konfiguration (aus dem Speicher der CLI) ---")
-            print(self.config)
-            print("--------------------------------------------------------\n")
+    #         # SCHRITT 4: Aktualisiere die Konfiguration und den Namen in ALLEN laufenden Teilen des Programms.
+    #         # Dies ist der entscheidende Schritt, um alle Teile zu synchronisieren.
+    #         self.config = current_config
+    #         self.chat_client.username = new_username
+    #         self.discovery_service.username = new_username
+    #         print("4. Laufende Programmteile wurden mit dem neuen Namen aktualisiert.")
 
-        elif cmd == "/quit":
-            print("Beende das Programm...")
-            if self.discovery_service.running:
-                self.discovery_service.send_leave()
-                self.discovery_service.stop()
-            self.running = False # Beendet die Hauptschleife
+    #         # SCHRITT 5: Sende die JOIN-Nachricht.
+    #         if not self.discovery_service.running:
+    #             self.discovery_service.start()
+    #         self.discovery_service.send_join()
+    #         print(f"5. JOIN als '{new_username}' gesendet.")
+    #         print(f"--- [ENDE] Du bist jetzt als '{new_username}' im Chat aktiv. ---\n")
+
+    #     elif cmd == "/show_config":
+    #         print("\n--- Aktuelle Konfiguration (aus dem Speicher der CLI) ---")
+    #         print(self.config)
+    #         print("--------------------------------------------------------\n")
+
+    #     elif cmd == "/quit":
+    #         print("Beende das Programm...")
+    #         if self.discovery_service.running:
+    #             self.discovery_service.send_leave()
+    #             self.discovery_service.stop()
+    #         self.running = False # Beendet die Hauptschleife
         
-        # Hier können weitere Befehle (elif cmd == "/who": ...) hinzugefügt werden.
-        else:
-            # Behandelt normale Chat-Nachrichten oder unbekannte Befehle
-            if user_input.startswith('/'):
-                print(f"Unbekannter Befehl: {cmd}")
-            else:
-                # Logik für das Senden von Broadcast-Nachrichten (/msg)
-                print("Broadcast-Funktion hier einfügen.")
+    #     # Hier können weitere Befehle (elif cmd == "/who": ...) hinzugefügt werden.
+    #     else:
+    #         # Behandelt normale Chat-Nachrichten oder unbekannte Befehle
+    #         if user_input.startswith('/'):
+    #             print(f"Unbekannter Befehl: {cmd}")
+    #         else:
+    #             # Logik für das Senden von Broadcast-Nachrichten (/msg)
+    #             print("Broadcast-Funktion hier einfügen.")
 
 
+    # Diese Methode wird aufgerufen, wenn die CLI gestartet wird
     def run(self):
         """
         Dies ist die Hauptschleife der CLI.
