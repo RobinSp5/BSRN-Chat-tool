@@ -43,7 +43,7 @@ class DiscoveryService:
 
         # Versuche, den Discovery-Socket zu binden
         try:
-            self.listen_socket.bind(('', self.discovery_port))
+            self.listen_socket.bind(('', self.discovery_port)) ##Das Abschnitt sorgt dafür, das der Discovery nur einmal startet
             threading.Thread(target=self.listen_loop, daemon=True).start()
         except OSError:
             # Falls das nicht klappt, gibt es einen Fehler
