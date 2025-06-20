@@ -360,13 +360,15 @@ class CLI:
                 self.show_message(message)
             time.sleep(0.1) # Kurze Pause, um die CPU-Auslastung zu reduzieren
 
-    #
+    # Verarbeitet und zeigt eine einzelne Nachricht an
     def show_message(self, message: Dict[str, Any]):
         msg_type = message.get('type')
         sender_ip = message.get('sender_ip', 'Unbekannt')
         timestamp = message.get('timestamp', 0)
         time_str = time.strftime('%H:%M:%S', time.localtime(timestamp))
 
+        # Überprüft, ob der Nachrichtentyp gültig ist
+        # Wenn der msg Type text ist...
         if msg_type == 'text':
             sender_name = None
             users = self.ipc_handler.get_active_users(only_visible=False)
@@ -374,18 +376,25 @@ class CLI:
                 if info["ip"] == sender_ip:
                     sender_name = name
                     break
-            local_ip = self.chat_client.config['network'].get('local_ip', '')
+
+            local_ip = self.chat_client.config['network'].get('local_ip', '')  # Lokale IP-Adresse abfragen
+
             if sender_ip == local_ip and sender_name is None:
                 sender_name = self.chat_client.username
-            display_name = sender_name if sender_name else sender_ip
-            print(f"\n[{time_str}] Nachricht von {display_name}: {message.get('content')}")
+
+            display_name = sender_name if sender_name else sender_ip # Wenn kein Name gefunden wurde, wird die IP-Adresse angezeigt
+            
+            print(f"\n[{time_str}] Nachricht von {display_name}: {message.get('content')}") # Print Ausgabe der Nachricht
 
             if self.autoreply_active and sender_name:
                 reply = self.config["system"].get("autoreply", "Ich bin gerade nicht verfügbar.")
                 self.chat_client.send_text_message(sender_ip, info["tcp_port"], sender_name, reply)
 
+        # Wenn der msg Type image ist...
         elif msg_type == 'image':
             print(f"\n[{time_str}] Bild empfangen von {sender_ip}: {message.get('filename')}")
+
+        # Wenn der msg Type system ist...
         elif msg_type == 'system':
             print(f"\n[{time_str}] SYSTEM: {message.get('content')}")
         print("> ", end="", flush=True)
