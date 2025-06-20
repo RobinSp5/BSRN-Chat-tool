@@ -8,6 +8,7 @@ class ChatClient:
         self.config = config
         self.username = username
 
+    # Sendet eine SLCP-Nachricht über TCP
     def send_text_message(self, target_ip: str, target_port: int, target_handle: str, message: str) -> bool:
         """Sendet eine SLCP-Textnachricht über TCP (max. 512 Bytes inklusive Header)"""
         try:
@@ -25,6 +26,7 @@ class ChatClient:
             print(f"Text Message Error: {e}")
             return False
 
+    # Sendet eine SLCP-Bildnachricht über TCP
     def send_image_message(self, target_ip: str, target_port: int, target_handle: str, image_path: str) -> bool:
         """Sendet eine SLCP-Bildnachricht über TCP"""
         try:
@@ -52,13 +54,3 @@ class ChatClient:
             print(f"Image Message Error: {e}")
             return False
 
-    def send_leave_notification(self, target_ip: str, target_port: int) -> bool:
-        """Sendet eine LEAVE-Nachricht im SLCP-Format über TCP"""
-        try:
-            slcp_line = f"LEAVE {self.username}\n"
-            with socket.create_connection((target_ip, target_port), timeout=self.config['system']['socket_timeout']) as sock:
-                sock.sendall(slcp_line.encode("utf-8"))
-            return True
-        except Exception as e:
-            print(f"Leave Notification Error: {e}")
-            return False
