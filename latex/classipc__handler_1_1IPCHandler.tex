@@ -1,0 +1,64 @@
+\doxysection{ipc\+\_\+handler.\+IPCHandler Class Reference}
+\hypertarget{classipc__handler_1_1IPCHandler}{}\label{classipc__handler_1_1IPCHandler}\index{ipc\_handler.IPCHandler@{ipc\_handler.IPCHandler}}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{classipc__handler_1_1IPCHandler_a8f9e7decff792c9fdeb7b70df66e4618}\label{classipc__handler_1_1IPCHandler_a8f9e7decff792c9fdeb7b70df66e4618} 
+{\bfseries \+\_\+\+\_\+init\+\_\+\+\_\+} (self)
+\item 
+\Hypertarget{classipc__handler_1_1IPCHandler_adbeed9fca24484e1374428d46543820c}\label{classipc__handler_1_1IPCHandler_adbeed9fca24484e1374428d46543820c} 
+{\bfseries send\+\_\+message} (self, Dict\mbox{[}str, Any\mbox{]} message)
+\item 
+\Hypertarget{classipc__handler_1_1IPCHandler_a093d6f40cc15a8cf9bc4ce92961581de}\label{classipc__handler_1_1IPCHandler_a093d6f40cc15a8cf9bc4ce92961581de} 
+{\bfseries get\+\_\+message} (self, timeout=1)
+\item 
+\Hypertarget{classipc__handler_1_1IPCHandler_a47630423a0362e3c2c07f9a864933670}\label{classipc__handler_1_1IPCHandler_a47630423a0362e3c2c07f9a864933670} 
+{\bfseries send\+\_\+discovery\+\_\+update} (self, Dict\mbox{[}str, Any\mbox{]} user\+\_\+info)
+\item 
+\Hypertarget{classipc__handler_1_1IPCHandler_aa6d7312fee063363ff47431dfd991bbb}\label{classipc__handler_1_1IPCHandler_aa6d7312fee063363ff47431dfd991bbb} 
+{\bfseries get\+\_\+discovery\+\_\+update} (self, timeout=1)
+\item 
+\Hypertarget{classipc__handler_1_1IPCHandler_ab58630eb0ae88cdb764a8a2cf5b5b83f}\label{classipc__handler_1_1IPCHandler_ab58630eb0ae88cdb764a8a2cf5b5b83f} 
+{\bfseries update\+\_\+user\+\_\+list} (self, str username, str ip\+\_\+address, int tcp\+\_\+port, float timestamp=None)
+\item 
+\Hypertarget{classipc__handler_1_1IPCHandler_a48803068dac713a0efdad22ff9f71e22}\label{classipc__handler_1_1IPCHandler_a48803068dac713a0efdad22ff9f71e22} 
+{\bfseries get\+\_\+active\+\_\+users} (self, only\+\_\+visible=True)
+\item 
+\Hypertarget{classipc__handler_1_1IPCHandler_a58de750203496d531e49b74ca59b8bfa}\label{classipc__handler_1_1IPCHandler_a58de750203496d531e49b74ca59b8bfa} 
+{\bfseries set\+\_\+visibility} (self, bool visible)
+\item 
+\Hypertarget{classipc__handler_1_1IPCHandler_aad2f5695e1a94944e78361049f51c248}\label{classipc__handler_1_1IPCHandler_aad2f5695e1a94944e78361049f51c248} 
+bool {\bfseries is\+\_\+visible} (self)
+\item 
+\Hypertarget{classipc__handler_1_1IPCHandler_a0782d88aa9efb8d9af5ea7bef4bca212}\label{classipc__handler_1_1IPCHandler_a0782d88aa9efb8d9af5ea7bef4bca212} 
+{\bfseries remove\+\_\+user} (self, str username)
+\item 
+\Hypertarget{classipc__handler_1_1IPCHandler_ab563bd83bd7670b4531ac23b8a70bbda}\label{classipc__handler_1_1IPCHandler_ab563bd83bd7670b4531ac23b8a70bbda} 
+{\bfseries remove\+\_\+user\+\_\+by\+\_\+name} (self, str username)
+\item 
+\Hypertarget{classipc__handler_1_1IPCHandler_a649cfbba436b44f7af04a255243f3077}\label{classipc__handler_1_1IPCHandler_a649cfbba436b44f7af04a255243f3077} 
+{\bfseries cleanup\+\_\+inactive\+\_\+users} (self, timeout=60)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{classipc__handler_1_1IPCHandler_a268992050c2761ba43fd0d29bcfe584a}\label{classipc__handler_1_1IPCHandler_a268992050c2761ba43fd0d29bcfe584a} 
+{\bfseries message\+\_\+queue}
+\item 
+\Hypertarget{classipc__handler_1_1IPCHandler_a30a0c979ea5f81a3e176e687fe23dd84}\label{classipc__handler_1_1IPCHandler_a30a0c979ea5f81a3e176e687fe23dd84} 
+{\bfseries discovery\+\_\+queue}
+\item 
+\Hypertarget{classipc__handler_1_1IPCHandler_ab3dde2eb843fac3df9cd9723d18abdfd}\label{classipc__handler_1_1IPCHandler_ab3dde2eb843fac3df9cd9723d18abdfd} 
+{\bfseries lock}
+\item 
+\Hypertarget{classipc__handler_1_1IPCHandler_a8cfa57d0a3ab3ad3f69fcca88a44f668}\label{classipc__handler_1_1IPCHandler_a8cfa57d0a3ab3ad3f69fcca88a44f668} 
+{\bfseries active\+\_\+users}
+\item 
+\Hypertarget{classipc__handler_1_1IPCHandler_a08a6fb893934606c64c012593d9cf2d7}\label{classipc__handler_1_1IPCHandler_a08a6fb893934606c64c012593d9cf2d7} 
+{\bfseries self\+\_\+visible}
+\end{DoxyCompactItemize}
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+ipc\+\_\+handler.\+py\end{DoxyCompactItemize}

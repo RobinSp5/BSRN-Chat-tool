@@ -1,0 +1,20 @@
+\@ifundefined {etoctocstyle}{\let \etoc@startlocaltoc \@gobble \let \etoc@settocdepth \@gobble \let \etoc@depthtag \@gobble \let \etoc@setlocaltop \@gobble }{}
+\contentsline {chapter}{\numberline {1}Simple LAN Chat (SLCP)}{1}{chapter.1}%
+\contentsline {section}{\numberline {1.1}🔧 Features}{1}{section.1.1}%
+\contentsline {section}{\numberline {1.2}🛠️ Technologien \& Abhängigkeiten}{2}{section.1.2}%
+\contentsline {chapter}{\numberline {2}Class Index}{3}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Class List}{3}{section.2.1}%
+\contentsline {chapter}{\numberline {3}Class Documentation}{5}{chapter.3}%
+\contentsline {section}{\numberline {3.1}chat\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}\_\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}client.\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}Chat\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}Client Class Reference}{5}{section.3.1}%
+\contentsline {subsection}{\numberline {3.1.1}Member Function Documentation}{5}{subsection.3.1.1}%
+\contentsline {subsubsection}{\numberline {3.1.1.1}send\_image\_message()}{5}{subsubsection.3.1.1.1}%
+\contentsline {section}{\numberline {3.2}gui.\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}Chat\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}GUI Class Reference}{5}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}Member Function Documentation}{6}{subsection.3.2.1}%
+\contentsline {subsubsection}{\numberline {3.2.1.1}update\_active\_users()}{6}{subsubsection.3.2.1.1}%
+\contentsline {section}{\numberline {3.3}chat\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}\_\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}server.\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}Chat\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}Server Class Reference}{6}{section.3.3}%
+\contentsline {section}{\numberline {3.4}cli.\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}CLI Class Reference}{7}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}Member Function Documentation}{7}{subsection.3.4.1}%
+\contentsline {subsubsection}{\numberline {3.4.1.1}run()}{7}{subsubsection.3.4.1.1}%
+\contentsline {section}{\numberline {3.5}discovery.\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}Discovery\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}Service Class Reference}{7}{section.3.5}%
+\contentsline {section}{\numberline {3.6}ipc\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}\_\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}handler.\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}IPCHandler Class Reference}{8}{section.3.6}%
+\contentsline {section}{\numberline {3.7}main.\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}Simple\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}Chat\discretionary {\mbox {\scriptsize $\hookleftarrow $}}{}{}App Class Reference}{8}{section.3.7}%

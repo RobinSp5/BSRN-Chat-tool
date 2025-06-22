@@ -1,0 +1,78 @@
+\chapter{Simple LAN Chat (SLCP)}
+\hypertarget{md_README}{}\label{md_README}\index{Simple LAN Chat (SLCP)@{Simple LAN Chat (SLCP)}}
+\label{md_README_autotoc_md0}%
+\Hypertarget{md_README_autotoc_md0}%
+ Ein leichtgewichtiges, dezentral organisiertes Chatprogramm für Text-\/ und Bildnachrichten im lokalen Netzwerk (LAN). Entwickelt im Rahmen eines Hochschulprojekts an der Frankfurt UAS auf Basis des Simple Local Chat Protocol (SLCP).
+
+\DoxyHorRuler{0}
+\hypertarget{md_README_autotoc_md2}{}\doxysection{\texorpdfstring{🔧 Features}{🔧 Features}}\label{md_README_autotoc_md2}
+
+\begin{DoxyItemize}
+\item {\bfseries{SLCP-\/\+Kommunikation}} ~\newline
+
+\begin{DoxyItemize}
+\item UDP-\/\+Broadcast\+: JOIN, LEAVE, WHO ~\newline
+
+\item TCP-\/\+Verbindungen\+: zuverlässige Bildübertragung (IMG) ~\newline
+
+\end{DoxyItemize}
+\item {\bfseries{Text-\/ \& Bildnachrichten}} ~\newline
+
+\item {\bfseries{Interprozesskommunikation (IPC)}} ~\newline
+
+\begin{DoxyItemize}
+\item Prozesse für UI, Netzwerk \& Discovery ~\newline
+
+\item Thread-\/safe Queues für Datenaustausch ~\newline
+
+\end{DoxyItemize}
+\item {\bfseries{Kommandozeilen-\/\+Interface (CLI)}} ~\newline
+
+\begin{DoxyItemize}
+\item Nachrichten senden/empfangen ~\newline
+
+\item Konfigurationswerte bearbeiten ~\newline
+
+\end{DoxyItemize}
+\item {\bfseries{Discovery-\/\+Service}} ~\newline
+
+\begin{DoxyItemize}
+\item Erkennung und Pflege aktiver Peers ~\newline
+
+\end{DoxyItemize}
+\item {\bfseries{Zentrale Konfiguration}} ~\newline
+
+\begin{DoxyItemize}
+\item {\ttfamily config.\+toml} mit Netzwerk-\/, UI-\/ und Nutzer-\/\+Einstellungen ~\newline
+
+\item Bei Programmstart\+: interaktive CLI-\/\+Eingabe oder GUI-\/\+Eingabe (z. B. Benutzername) ~\newline
+
+\end{DoxyItemize}
+\end{DoxyItemize}
+
+\DoxyHorRuler{0}
+\hypertarget{md_README_autotoc_md4}{}\doxysection{\texorpdfstring{🛠️ Technologien \& Abhängigkeiten}{🛠️ Technologien \& Abhängigkeiten}}\label{md_README_autotoc_md4}
+
+\begin{DoxyItemize}
+\item {\bfseries{Sprache\+:}} Python 3.\+8+ ~\newline
+
+\item {\bfseries{Entwicklungsumgebung\+:}} Visual Studio Code ~\newline
+
+\item {\bfseries{Bibliotheken\+:}} ~\newline
+
+\begin{DoxyItemize}
+\item {\ttfamily socket} (UDP/\+TCP) ~\newline
+
+\item {\ttfamily threading} / {\ttfamily queue} (Nebenläufigkeit \& IPC) ~\newline
+
+\item {\ttfamily toml} (Laden/\+Speichern der Konfiguration) ~\newline
+
+\item {\ttfamily tkinter} (optionales GUI) ~\newline
+
+\item {\ttfamily os}, {\ttfamily sys}, {\ttfamily time} (System-\/ und Timing-\/\+Utilities) ~\newline
+
+\end{DoxyItemize}
+\end{DoxyItemize}
+
+\DoxyHorRuler{0}
+ 
