@@ -37,6 +37,8 @@ class ChatGUI:
 
         self.users_listbox = tk.Listbox(main_frame, width=20, height=20)
         self.users_listbox.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
+        self.users_listbox.bind("<Double-Button-1>", self.on_user_double_click)
+
 
         # Message input
         self.message_entry = tk.Entry(main_frame, width=50)
@@ -226,7 +228,12 @@ class ChatGUI:
         # Nachrichtentypen unterscheiden
         if msg_type == 'text':
             content = message.get('content', '')
-            line = f"[{ts}] {display_name}: {content}\n"
+            recipient = message.get('recipient', '')
+            if recipient == self.username:
+                line = f"[{ts}] [PM] {display_name}: {content}\n"
+            else:
+                line = f"[{ts}] {display_name}: {content}\n"
+            
         elif msg_type == 'image':
             fname = message.get('filename', '')
             line = f"[{ts}] {display_name} schickte ein Bild: {fname}\n"
@@ -316,6 +323,39 @@ class ChatGUI:
         
         # Eingabe leeren
         self.message_entry.delete(0, tk.END)
+
+    # Doppelklick auf einen Nutzer in der Liste und pm
+    def on_user_double_click(self, event):
+        try:
+            index = self.users_listbox.curselection()[0]
+            selected = self.users_listbox.get(index)
+        except IndexError:
+            self.display_system_message("Kein Nutzer ausgewählt.")
+            return
+
+        if "@" not in selected:
+            self.display_system_message("Kein gültiger Nutzer.")
+            return
+
+        recipient = selected.split(" @ ")[0]
+
+        message = simpledialog.askstring(
+            f"Privatnachricht an {recipient}",
+            "Nachricht eingeben:"
+        )
+
+        if not message:
+            return
+
+        users = self.ipc_handler.get_active_users()
+        info = users.get(recipient)
+        if not info:
+            self.display_system_message(f"{recipient} nicht erreichbar.")
+            return
+
+        if self.chat_client.send_text_message(info["ip"], info["tcp_port"], recipient, message):
+            self.display_system_message(f"[PM] Du → {recipient}: {message}")
+
 
 
     #Aktualisiern-Button
