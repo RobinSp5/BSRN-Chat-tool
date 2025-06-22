@@ -1,0 +1,14 @@
+\indexentry{Simple LAN Chat (SLCP)@{Simple LAN Chat (SLCP)}|hyperpage}{1}
+\indexentry{chat\_client.ChatClient@{chat\_client.ChatClient}|hyperpage}{5}
+\indexentry{chat\_client.ChatClient@{chat\_client.ChatClient}!send\_image\_message@{send\_image\_message}|hyperpage}{5}
+\indexentry{send\_image\_message@{send\_image\_message}!chat\_client.ChatClient@{chat\_client.ChatClient}|hyperpage}{5}
+\indexentry{gui.ChatGUI@{gui.ChatGUI}|hyperpage}{5}
+\indexentry{gui.ChatGUI@{gui.ChatGUI}!update\_active\_users@{update\_active\_users}|hyperpage}{6}
+\indexentry{update\_active\_users@{update\_active\_users}!gui.ChatGUI@{gui.ChatGUI}|hyperpage}{6}
+\indexentry{chat\_server.ChatServer@{chat\_server.ChatServer}|hyperpage}{6}
+\indexentry{cli.CLI@{cli.CLI}|hyperpage}{7}
+\indexentry{cli.CLI@{cli.CLI}!run@{run}|hyperpage}{7}
+\indexentry{run@{run}!cli.CLI@{cli.CLI}|hyperpage}{7}
+\indexentry{discovery.DiscoveryService@{discovery.DiscoveryService}|hyperpage}{7}
+\indexentry{ipc\_handler.IPCHandler@{ipc\_handler.IPCHandler}|hyperpage}{8}
+\indexentry{main.SimpleChatApp@{main.SimpleChatApp}|hyperpage}{8}

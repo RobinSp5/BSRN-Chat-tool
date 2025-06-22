@@ -1,0 +1,73 @@
+\doxysection{discovery.\+Discovery\+Service Class Reference}
+\hypertarget{classdiscovery_1_1DiscoveryService}{}\label{classdiscovery_1_1DiscoveryService}\index{discovery.DiscoveryService@{discovery.DiscoveryService}}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{classdiscovery_1_1DiscoveryService_a225c8e71ddd451215f569f0aea623301}\label{classdiscovery_1_1DiscoveryService_a225c8e71ddd451215f569f0aea623301} 
+{\bfseries \+\_\+\+\_\+init\+\_\+\+\_\+} (self, Dict\mbox{[}str, Any\mbox{]} config, ipc\+\_\+handler, str username, int chat\+\_\+tcp\+\_\+port)
+\item 
+\Hypertarget{classdiscovery_1_1DiscoveryService_a6273a4c302ff26d03b61c64b4827cd07}\label{classdiscovery_1_1DiscoveryService_a6273a4c302ff26d03b61c64b4827cd07} 
+{\bfseries start} (self)
+\item 
+\Hypertarget{classdiscovery_1_1DiscoveryService_a432c7b6a715f7d3af111ef8df42c20b0}\label{classdiscovery_1_1DiscoveryService_a432c7b6a715f7d3af111ef8df42c20b0} 
+{\bfseries stop} (self)
+\item 
+\Hypertarget{classdiscovery_1_1DiscoveryService_a3bb1ab5de13eb0689950d0ae7ee50855}\label{classdiscovery_1_1DiscoveryService_a3bb1ab5de13eb0689950d0ae7ee50855} 
+{\bfseries listen\+\_\+loop} (self)
+\item 
+\Hypertarget{classdiscovery_1_1DiscoveryService_a26382f2c59d0cf6911741040c19219ee}\label{classdiscovery_1_1DiscoveryService_a26382f2c59d0cf6911741040c19219ee} 
+{\bfseries handle\+\_\+message} (self, str message, str sender\+\_\+ip)
+\item 
+\Hypertarget{classdiscovery_1_1DiscoveryService_af5044369656fafee5001df8c80976906}\label{classdiscovery_1_1DiscoveryService_af5044369656fafee5001df8c80976906} 
+{\bfseries send\+\_\+udp\+\_\+broadcast} (self, str text)
+\item 
+\Hypertarget{classdiscovery_1_1DiscoveryService_a35655556b38ded8b22c602b0d813a999}\label{classdiscovery_1_1DiscoveryService_a35655556b38ded8b22c602b0d813a999} 
+{\bfseries send\+\_\+join} (self)
+\item 
+\Hypertarget{classdiscovery_1_1DiscoveryService_aa2c2f1e32707b42362850b4607ac4484}\label{classdiscovery_1_1DiscoveryService_aa2c2f1e32707b42362850b4607ac4484} 
+{\bfseries send\+\_\+leave} (self)
+\item 
+\Hypertarget{classdiscovery_1_1DiscoveryService_a054ac5ce13756e44680481ca930440c5}\label{classdiscovery_1_1DiscoveryService_a054ac5ce13756e44680481ca930440c5} 
+{\bfseries request\+\_\+discovery} (self)
+\item 
+\Hypertarget{classdiscovery_1_1DiscoveryService_a8f32fb5b163fc3688994766cd657b491}\label{classdiscovery_1_1DiscoveryService_a8f32fb5b163fc3688994766cd657b491} 
+{\bfseries send\+\_\+knowusers} (self, str target\+\_\+ip)
+\item 
+\Hypertarget{classdiscovery_1_1DiscoveryService_aff8224031158064984298e86844c93f1}\label{classdiscovery_1_1DiscoveryService_aff8224031158064984298e86844c93f1} 
+{\bfseries send\+\_\+to\+\_\+all\+\_\+known\+\_\+peers\+\_\+as\+\_\+knowuser} (self)
+\item 
+\Hypertarget{classdiscovery_1_1DiscoveryService_a682aac61b3a75b52d50536af7aa13dd8}\label{classdiscovery_1_1DiscoveryService_a682aac61b3a75b52d50536af7aa13dd8} 
+{\bfseries change\+\_\+handle} (self, str new\+\_\+username, str config\+\_\+file\+\_\+path="{}config.\+toml"{})
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{classdiscovery_1_1DiscoveryService_af7bdcb6a6f70403ea05fe1fe8b06c197}\label{classdiscovery_1_1DiscoveryService_af7bdcb6a6f70403ea05fe1fe8b06c197} 
+{\bfseries config}
+\item 
+\Hypertarget{classdiscovery_1_1DiscoveryService_a6218da432f947151f506005798d605f5}\label{classdiscovery_1_1DiscoveryService_a6218da432f947151f506005798d605f5} 
+{\bfseries ipc\+\_\+handler}
+\item 
+\Hypertarget{classdiscovery_1_1DiscoveryService_a6a354ef98f3aea0581916a476163f3fc}\label{classdiscovery_1_1DiscoveryService_a6a354ef98f3aea0581916a476163f3fc} 
+{\bfseries username}
+\item 
+\Hypertarget{classdiscovery_1_1DiscoveryService_afc9d33f0767c262a3bb8c08d7edca217}\label{classdiscovery_1_1DiscoveryService_afc9d33f0767c262a3bb8c08d7edca217} 
+{\bfseries chat\+\_\+tcp\+\_\+port}
+\item 
+\Hypertarget{classdiscovery_1_1DiscoveryService_af19856ccd84aff07fa531ae2ed2a8ff9}\label{classdiscovery_1_1DiscoveryService_af19856ccd84aff07fa531ae2ed2a8ff9} 
+{\bfseries running}
+\item 
+\Hypertarget{classdiscovery_1_1DiscoveryService_a2364e5696ce0789ac5733552dcd7174c}\label{classdiscovery_1_1DiscoveryService_a2364e5696ce0789ac5733552dcd7174c} 
+{\bfseries broadcast\+\_\+ip}
+\item 
+\Hypertarget{classdiscovery_1_1DiscoveryService_a12506591cbfd4f13a57bf95c991e6146}\label{classdiscovery_1_1DiscoveryService_a12506591cbfd4f13a57bf95c991e6146} 
+{\bfseries discovery\+\_\+port}
+\item 
+\Hypertarget{classdiscovery_1_1DiscoveryService_afcbed9046dd716dfce94f1c5d6a0393c}\label{classdiscovery_1_1DiscoveryService_afcbed9046dd716dfce94f1c5d6a0393c} 
+{\bfseries listen\+\_\+socket}
+\end{DoxyCompactItemize}
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+discovery.\+py\end{DoxyCompactItemize}
