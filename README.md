@@ -31,26 +31,26 @@ Ein leichtgewichtiges, dezentral organisiertes Chatprogramm für Text- und Bildn
 
 ## CLI-Befehle
 
-/join <name>              - Chat beitreten (JOIN senden)
-/who                      - Aktive Nutzer abfragen (WHO senden)
-/msg <text>               - Nachricht an alle senden
-/pm <user> <msg>          - Private Nachricht senden
-/img <user> <pfad>        - Bild privat senden
-/show_config              - Aktuelle Konfiguration anzeigen
-/edit_config <key> <val>  - Konfiguration bearbeiten (z.B. handle)
-/quit                     - LEAVE senden & beenden
+- /join <name>              - Chat beitreten (JOIN senden)
+- /who                      - Aktive Nutzer abfragen (WHO senden)
+- /msg <text>               - Nachricht an alle senden
+- /pm <user> <msg>          - Private Nachricht senden
+- /img <user> <pfad>        - Bild privat senden
+- /show_config              - Aktuelle Konfiguration anzeigen
+- /edit_config <key> <val>  - Konfiguration bearbeiten (z.B. handle)
+- /quit                     - LEAVE senden & beenden
 
 ---
 
 ## Projektdateien – Kurzbeschreibung
-main.py                   - Einstiegspunkt, startet alle Komponenten & lädt Konfiguration.
-cli.py                    - Kommandozeileninterface, verarbeitet Nutzerbefehle.
-gui.py                    - Einfache grafische Benutzeroberfläche.
-chat_client.py            - Versendet Nachrichten und Bilder (TCP).
-chat_server.py            - Empfängt Nachrichten und Bilder (TCP).
-discovery.py              - Discovery-Dienst (UDP, Port 4000) zur Nutzererkennung.
-ipc_handler.py            - Interprozesskommunikation & Datenverwaltung.
-config.toml               - Zentrale Konfigurationsdatei (Username, Ports, etc.).
+- main.py                   - Einstiegspunkt, startet alle Komponenten & lädt Konfiguration.
+- cli.py                    - Kommandozeileninterface, verarbeitet Nutzerbefehle.
+- gui.py                    - Einfache grafische Benutzeroberfläche.
+- chat_client.py            - Versendet Nachrichten und Bilder (TCP).
+- chat_server.py            - Empfängt Nachrichten und Bilder (TCP).
+- discovery.py              - Discovery-Dienst (UDP, Port 4000) zur Nutzererkennung.
+- ipc_handler.py            - Interprozesskommunikation & Datenverwaltung.
+- config.toml               - Zentrale Konfigurationsdatei (Username, Ports, etc.).
 
 ---
 
