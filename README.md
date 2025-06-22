@@ -29,6 +29,46 @@ Ein leichtgewichtiges, dezentral organisiertes Chatprogramm für Text- und Bildn
 
 ---
 
+## Start & Installation
+
+1. Python 3.8 oder höher installieren
+
+   Stelle sicher, dass Python korrekt installiert ist:
+   ```
+   python --version
+   ```
+
+2. Abhängigkeiten installieren
+
+   Installiere die benötigten Bibliotheken:
+   ```
+   pip install toml
+   ```
+
+   Für die GUI wird zusätzlich tkinter benötigt:
+
+   - unter Ubuntu:
+     ```
+     sudo apt install python3-tk
+     ```
+
+3. Programm starten
+
+   - GUI-Version:
+     ```
+     python gui.py
+     ```
+
+   - CLI-Version:
+     ```
+     python main.py
+     ```
+
+4. Hinweise
+
+   - Die Konfiguration wird aus der Datei config.toml gelesen oder ergänzt.
+   - Im CLI können sämtliche Funktionen über Befehle ausgeführt werden (siehe Abschnitt „CLI-Befehle“).
+
 ## CLI-Befehle
 
 - /join <name>              - Chat beitreten (JOIN senden)
