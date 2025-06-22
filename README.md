@@ -66,8 +66,10 @@ Ein leichtgewichtiges, dezentral organisiertes Chatprogramm für Text- und Bildn
 
 4. Hinweise
 
-   - Die Konfiguration wird aus der Datei config.toml gelesen oder ergänzt.
+   - Die Konfiguration wird aus der Datei config.toml gelesen bzw bei Programmstart angepasst.
    - Im CLI können sämtliche Funktionen über Befehle ausgeführt werden (siehe Abschnitt „CLI-Befehle“).
+
+---
 
 ## CLI-Befehle
 
